@@ -17,6 +17,8 @@ Failed compilation exits nonzero. Archives are created only from a new successfu
 
 The `Panel Tools` workflow runs on push, pull request and manual dispatch. It checks privacy and source, compiles and retains the ZIP plus SHA256 as an Actions artifact. Publishing is a separate job, restricted to this upstream repository's dev/prod branches. Pull requests never publish; do not change this to `pull_request_target` or run untrusted code with secrets.
 
+When bootstrapping a new repository, open its Actions tab and enable Actions if GitHub shows the repository-level activation banner. A workflow can appear active through the API and allow manual runs before automatic push events are enabled. Verify an actual push run after activation.
+
 Configure the repository Actions Secret `RELEASE_SSH_KEY` with a dedicated restricted publication identity. Never put its private key in source, a package or a release note. The matching public key is configured by the website operator with a forced receiver command restricted to `kiochan/photoshop-panel-tools` and product `panel-tools`. Server identity is pinned in `.github/release-known_hosts`. `RELEASE_HOST` optionally overrides the pinned host name.
 
 The publication job downloads only this build's artifact, prepares a validated public Markdown/package bundle, sends it to the receiver, then checks the website build SHA and ZIP download range. Only the matching channel/product catalogue entry changes; the other channel and Bailey remain intact. Successful publication removes older managed versions of this product/channel.
