@@ -23,6 +23,9 @@ $recallShared = @(
 if ($LASTEXITCODE -ne 0) { throw "Panel Recall compilation failed ($LASTEXITCODE)." }
 Copy-Item -LiteralPath (Join-Path $recallSource 'app.config') -Destination (Join-Path $recallOutput 'PanelRecall.exe.config') -Force
 Copy-Item -LiteralPath (Join-Path $recallSource 'README.md') -Destination (Join-Path $recallOutput 'README.md') -Force
+foreach ($recallDocument in @('LICENSE', 'THIRD_PARTY.md', 'COMPATIBILITY.md')) {
+    Copy-Item -LiteralPath (Join-Path $recallRoot $recallDocument) -Destination $recallOutput
+}
 $recallInventory = @(Get-ChildItem -LiteralPath $recallOutput -File | Where-Object Name -ne 'build-manifest.json' | ForEach-Object {
     [ordered]@{ path = $_.Name; bytes = $_.Length; sha256 = Get-BuildHash $_.FullName }
 })
