@@ -1,0 +1,39 @@
+name: Bug report
+description: Report a reproducible Panel Tools problem.
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not upload artwork, local settings, recovery records, credentials or third-party plugin code.
+        Report vulnerabilities privately through the Security tab.
+  - type: input
+    id: version
+    attributes:
+      label: Tool version and channel
+      placeholder: 0.1.0, dev or prod, build commit if available
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Windows and Photoshop versions, source plugin, monitor layout and display scaling. Redact private window titles and paths.
+    validations:
+      required: true
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Panel mode
+      options:
+        - Mirror and forward input
+        - Move real floating panel
+        - Startup or configuration
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps, expected result and actual result
+      description: Include whether keyboard shortcuts, mouse or pen input were used. Attach only sanitized screenshots you can share.
+    validations:
+      required: true
