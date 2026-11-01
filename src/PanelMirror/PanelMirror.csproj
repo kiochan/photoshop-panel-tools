@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\PanelRecall\Native.cs" Link="Recall\Native.cs" />
+    <Compile Include="..\PanelRecall\Storage.cs" Link="Recall\Storage.cs" />
+    <Compile Include="..\PanelRecall\RecallSession.cs" Link="Recall\RecallSession.cs" />
+    <Compile Include="..\..\shared\windows-native\CanvasClickHook.cs" Link="Recall\CanvasClickHook.cs" />
+    <Compile Include="..\..\shared\windows-native\ProcessIdentity.cs" Link="Recall\ProcessIdentity.cs" />
+  </ItemGroup>
+</Project>

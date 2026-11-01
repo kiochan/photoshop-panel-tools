@@ -1,0 +1,97 @@
+name: Panel Tools
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish the latest package (upstream dev/prod only)
+        type: boolean
+        default: false
+
+concurrency:
+  group: panel-tools-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/dev' && github.ref != 'refs/heads/prod' }}
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build panel-tools
+    runs-on: windows-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      TOOL_PRODUCT: panel-tools
+      DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+      DOTNET_NOLOGO: "1"
+      DOTNET_GENERATE_ASPNET_CERTIFICATE: "false"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Validate the selected application
+        run: node --input-type=module -e "import {productInfo} from './scripts/products.mjs'; await productInfo(process.env.TOOL_PRODUCT);"
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+      - name: Review source privacy
+        run: node scripts/privacy-check.mjs
+      - name: Install this application's locked development dependencies
+        run: npm ci
+      - name: Check and package only this application (no runtime tests)
+        run: npm run package
+      - uses: actions/upload-artifact@v4
+        with:
+          name: panel-tools-${{ github.sha }}
+          path: artifacts/panel-tools-*.zip*
+          if-no-files-found: error
+          retention-days: 14
+
+  publish:
+    name: Publish panel-tools
+    needs: build
+    if: github.repository == 'kiochan/photoshop-panel-tools' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/prod') && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish))
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      TOOL_PRODUCT: panel-tools
+      RELEASE_HOST: ${{ vars.RELEASE_HOST || 'ip.kiochan.one' }}
+      RELEASE_CHANNEL: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: actions/download-artifact@v4
+        with:
+          name: panel-tools-${{ github.sha }}
+          path: artifacts
+      - name: Prepare only this application's public release
+        run: node scripts/prepare-release.mjs --product "$TOOL_PRODUCT"
+      - name: Prepare the restricted publication identity
+        env:
+          RELEASE_SSH_KEY: ${{ secrets.RELEASE_SSH_KEY }}
+        run: |
+          test -n "$RELEASE_SSH_KEY" || { echo '::error::Configure RELEASE_SSH_KEY.'; exit 1; }
+          umask 077
+          mkdir -p "$RUNNER_TEMP/panel-publish"
+          printf '%s\n' "$RELEASE_SSH_KEY" > "$RUNNER_TEMP/panel-publish/id_ed25519"
+          cp .github/release-known_hosts "$RUNNER_TEMP/panel-publish/known_hosts"
+      - name: Publish only this tool, preserving the other tool and channel
+        run: bash scripts/publish-site.sh
+      - name: Verify this application's latest public package
+        run: node scripts/verify-site-release.mjs --product "$TOOL_PRODUCT"
+      - name: Remove the runner publication identity
+        if: always()
+        run: rm -f "$RUNNER_TEMP/panel-publish/id_ed25519"

@@ -1,0 +1,34 @@
+{
+  "name": "@kiochan/photoshop-panel-tools",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "description": "Photoshop panel recall with per-slot mirroring or real floating-window movement.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kiochan/photoshop-panel-tools.git"
+  },
+  "homepage": "https://kiochan.one/releases/panel-tools",
+  "bugs": {
+    "url": "https://github.com/kiochan/photoshop-panel-tools/issues"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "privacy:check": "node scripts/privacy-check.mjs",
+    "lint": "biome check --error-on-warnings .",
+    "format": "biome check --write .",
+    "check": "npm run lint && node --check cep/panel.js",
+    "build": "npm run check && powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File scripts/build.ps1",
+    "package": "npm run privacy:check && npm run check && powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File scripts/build.ps1 -Package",
+    "build:recall": "powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File scripts/build-recall.ps1 -Package",
+    "prepare:release": "node scripts/prepare-release.mjs",
+    "prepare:source": "npm run privacy:check && node scripts/prepare-source.mjs",
+    "clean": "node scripts/clean.mjs"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.6.4"
+  }
+}

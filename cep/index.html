@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; object-src 'none'">
+  <title>面板镜像</title>
+  <link rel="stylesheet" href="panel.css">
+</head>
+<body>
+  <h1>面板镜像</h1>
+  <p>把已有面板的实时画面显示在笔尖旁，原面板保持原位。</p>
+  <p>兼容目标：PS 2019 及以上<br>目前尚未实机验证。</p>
+  <p id="host" role="status">正在读取 Photoshop 版本…</p>
+  <button id="launch" type="button">打开镜像配置</button>
+  <p>默认 Alt + 1～5 召唤／放回<br>每个面板可自定义快捷键，也可分设召唤键和放回键</p>
+  <p id="status" role="status">请先构建原生助手，再打开配置绑定面板。</p>
+  <script src="panel.js"></script>
+</body>
+</html>

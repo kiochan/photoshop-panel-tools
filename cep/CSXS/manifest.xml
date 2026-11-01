@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ExtensionManifest Version="7.0" ExtensionBundleId="local.panelmirror" ExtensionBundleVersion="0.1.0">
+  <ExtensionList><Extension Id="local.panelmirror.launcher" Version="0.1.0" /></ExtensionList>
+  <ExecutionEnvironment>
+    <!-- Broad admission range; runtime compatibility requires separate validation. -->
+    <HostList><Host Name="PHXS" Version="[20.0,99.9]" /><Host Name="PHSP" Version="[20.0,99.9]" /></HostList>
+    <LocaleList><Locale Code="All" /></LocaleList>
+    <RequiredRuntimeList><RequiredRuntime Name="CSXS" Version="9.0" /></RequiredRuntimeList>
+  </ExecutionEnvironment>
+  <DispatchInfoList><Extension Id="local.panelmirror.launcher"><DispatchInfo>
+    <Resources><MainPath>./index.html</MainPath></Resources>
+    <Lifecycle><AutoVisible>true</AutoVisible></Lifecycle>
+    <UI><Type>Panel</Type><Menu>面板镜像</Menu><Geometry><Size><Width>320</Width><Height>240</Height></Size><MinSize><Width>260</Width><Height>200</Height></MinSize></Geometry></UI>
+  </DispatchInfo></Extension></DispatchInfoList>
+</ExtensionManifest>

@@ -1,0 +1,7 @@
+:root { color-scheme: dark; font: 13px/1.6 "Segoe UI", "Microsoft YaHei", sans-serif; }
+body { margin: 16px; background: #292a2d; color: #e9eaee; }
+h1 { font-size: 18px; margin: 0 0 8px; }
+p { margin: 10px 0; }
+button { padding: 8px 16px; color: #fff; background: #425aca; border: 0; border-radius: 5px; cursor: pointer; }
+button:disabled { opacity: .5; cursor: default; }
+#status { color: #bbbfc9; overflow-wrap: anywhere; }
