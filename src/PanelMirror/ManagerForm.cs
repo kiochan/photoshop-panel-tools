@@ -21,6 +21,13 @@ internal sealed class ManagerForm : Form
     private readonly System.Windows.Forms.Timer picker = new() { Interval = 100 };
     private long pickDeadline;
     private bool pickRegion, configurationReadable = true;
+    private readonly NotifyIcon tray = new() { Icon = SystemIcons.Application, Text = "Photoshop Panel Tools" };
+    private readonly EventWaitHandle wake = new(false, EventResetMode.AutoReset, Program.WakeEvent);
+    private readonly Label[] slotStates = Enumerable.Range(0, 5).Select(_ => new Label { AutoSize = true, MaximumSize = new Size(700, 0), Cursor = Cursors.Hand }).ToArray();
+    private readonly string?[] slotErrors = new string?[5];
+    private bool exitRequested, keysPaused, editingCrop;
+    private long nextStatus;
+    private string? realError;
 
     public ManagerForm()
     {
@@ -29,8 +36,26 @@ internal sealed class ManagerForm : Form
         ClientSize = new Size(760, 550); MinimumSize = new Size(780, 550);
         var layout = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, WrapContents = false, AutoScroll = true, Padding = new Padding(16) };
         Controls.Add(layout);
+        var trayMenu = new ContextMenuStrip();
+        trayMenu.Items.Add("打开配置", null, (_, _) => ShowConfiguration());
+        var pause = new ToolStripMenuItem("暂停快捷键") { CheckOnClick = true };
+        pause.CheckedChanged += (_, _) => { keysPaused = pause.Checked; RegisterKeys(); UpdateSlotStates(); };
+        trayMenu.Items.Add(pause);
+        trayMenu.Items.Add("关闭所有镜像", null, (_, _) => { for (int i = 0; i < 5; i++) HideMirror(i); UpdateSlotStates(); });
+        trayMenu.Items.Add("放回真实面板", null, (_, _) => RestoreReal());
+        trayMenu.Items.Add("退出（先尝试放回）", null, (_, _) => RequestExit(false));
+        tray.ContextMenuStrip = trayMenu;
+        tray.DoubleClick += (_, _) => ShowConfiguration();
+        tray.Visible = true;
         layout.Controls.Add(new Label { Text = "每个面板独立选择召回方式与快捷键；默认 Alt+1～5 按一次召唤，再按一次关闭／放回。", AutoSize = true });
         layout.Controls.Add(new Label { Text = Compatibility.Targets, AutoSize = true });
+        layout.Controls.Add(new Label { Text = "槽位状态（点击切换配置）；关闭配置窗口后继续在系统托盘运行。", AutoSize = true });
+        for (int i = 0; i < slotStates.Length; i++)
+        {
+            int index = i;
+            slotStates[i].Click += (_, _) => slot.SelectedIndex = index;
+            layout.Controls.Add(slotStates[i]);
+        }
         var row = new FlowLayoutPanel { AutoSize = true };
         slot.Items.AddRange(new object[] { "槽位 1", "槽位 2", "槽位 3", "槽位 4", "槽位 5" });
         row.Controls.Add(slot);
@@ -47,6 +72,9 @@ internal sealed class ManagerForm : Form
             keyboard.Enabled = mirrorMode;
         };
         layout.Controls.Add(mode);
+        var cropButton = Button("预览并拖框裁剪…", EditCrop);
+        layout.Controls.Add(cropButton);
+        mode.SelectedIndexChanged += (_, _) => cropButton.Enabled = mode.SelectedIndex == (int)SummonMode.Mirror;
         layout.Controls.Add(separateKeys);
         var shortcuts = new FlowLayoutPanel { AutoSize = true };
         shortcuts.Controls.Add(new Label { Text = "召唤 / 切换", AutoSize = true }); shortcuts.Controls.Add(summonKey);
@@ -81,8 +109,9 @@ internal sealed class ManagerForm : Form
         actions.Controls.Add(Button("清除此槽", ClearBinding));
         layout.Controls.Add(actions); layout.Controls.Add(binding); layout.Controls.Add(status);
         var recovery = new FlowLayoutPanel { AutoSize = true };
-        recovery.Controls.Add(Button("恢复上次移动的真实面板", () => { try { real.Restore(); } catch (Exception e) { Report(e.Message); } }));
-        recovery.Controls.Add(Button("仅退出，保留恢复记录", () => { leaveRecovery = true; Close(); }));
+        recovery.Controls.Add(Button("恢复上次移动的真实面板", RestoreReal));
+        recovery.Controls.Add(Button("退出（先尝试放回）", () => RequestExit(false)));
+        recovery.Controls.Add(Button("仅退出，保留恢复记录", () => RequestExit(true)));
         layout.Controls.Add(recovery);
         layout.Controls.Add(new Label { Text = "原型边界：只镜像源客户区；外部菜单、弹窗不会自动跟随。\n源窗口隐藏、最小化或被对话框阻塞时暂停输入。后台消息是否被目标接受，仍需实测。\n数位笔目前按鼠标点击／拖动处理，不转发压感与倾斜。", AutoSize = true, MaximumSize = new Size(700, 0) });
         slot.SelectedIndexChanged += (_, _) => LoadSlot();
@@ -94,25 +123,31 @@ internal sealed class ManagerForm : Form
             try { if (real.HasRecovery) Report("发现未处理的真实面板恢复记录；请先点击恢复。镜像模式仍可使用。"); }
             catch (Exception e) { Report("恢复记录读取失败，移动模式已阻止新召回：" + e.Message); }
             moveTimer.Start();
+            UpdateSlotStates();
         };
         picker.Tick += (_, _) => FinishPick();
         moveTimer.Tick += (_, _) =>
         {
+            if (wake.WaitOne(0)) ShowConfiguration();
+            if (Environment.TickCount64 >= nextStatus) { nextStatus = Environment.TickCount64 + 1000; UpdateSlotStates(); }
             try
             {
                 string? message = real.Tick();
+                if (!real.Busy) realError = null;
                 if (message is not null) Report(real.Present ? "面板已召回；" + ReturnHint(real.ActiveSlot) : message);
                 if (closeAfterRestore && !real.Busy) { closeAfterRestore = false; Close(); }
             }
-            catch (Exception e) { closeAfterRestore = false; Report("真实面板处理失败，恢复记录已保留：" + e.Message); }
+            catch (Exception e) { closeAfterRestore = false; realError = e.Message; NotifyFailure("真实面板处理失败，恢复记录已保留：" + e.Message); }
         };
         FormClosing += (_, e) =>
         {
+            if (!exitRequested && e.CloseReason == CloseReason.UserClosing)
+            { e.Cancel = true; CancelPick(); Hide(); return; }
             if (!leaveRecovery && real.Busy)
             {
                 e.Cancel = true;
                 try { real.Restore(); closeAfterRestore = real.Busy; }
-                catch (Exception error) { closeAfterRestore = false; Report("放回失败，可重试或仅退出保留记录：" + error.Message); }
+                catch (Exception error) { closeAfterRestore = false; realError = error.Message; NotifyFailure("放回失败，可重试或仅退出保留记录：" + error.Message); }
                 if (!real.Busy) BeginInvoke((Action)Close);
                 return;
             }
@@ -120,7 +155,7 @@ internal sealed class ManagerForm : Form
             for (int i = 0; i < 5; i++) HideMirror(i);
             foreach (int id in registered) Native.UnregisterHotKey(Handle, id);
         };
-        FormClosed += (_, _) => { picker.Dispose(); moveTimer.Dispose(); real.Dispose(); };
+        FormClosed += (_, _) => { tray.Visible = false; tray.Dispose(); trayMenu.Dispose(); wake.Dispose(); picker.Dispose(); moveTimer.Dispose(); real.Dispose(); };
     }
 
     private static Button Button(string text, Action action)
@@ -129,6 +164,92 @@ internal sealed class ManagerForm : Form
         button.Click += (_, _) => action(); return button;
     }
     private void Report(string text) => status.Text = text;
+    private void ShowConfiguration()
+    {
+        Show(); if (WindowState == FormWindowState.Minimized) WindowState = FormWindowState.Normal;
+        Activate();
+    }
+    private void RequestExit(bool preserveRecovery)
+    { exitRequested = true; leaveRecovery = preserveRecovery; Close(); }
+    private void RestoreReal()
+    {
+        try { real.Restore(); realError = null; }
+        catch (Exception e) { realError = e.Message; NotifyFailure("无法恢复真实面板：" + e.Message); }
+        UpdateSlotStates();
+    }
+    private void NotifyFailure(string text)
+    {
+        Report(text);
+        tray.BalloonTipTitle = "Panel Tools · 操作未完成";
+        tray.BalloonTipText = text.Length > 240 ? text[..240] : text;
+        tray.ShowBalloonTip(4000);
+    }
+    private void EditCrop()
+    {
+        if (mode.SelectedIndex != (int)SummonMode.Mirror) return;
+        if (windows.SelectedItem is not WindowItem selected) { Report("请先选择或拾取源窗口。"); return; }
+        editingCrop = true; UnregisterKeys();
+        try
+        {
+            using var editor = new CropForm(new SourceWindow(selected), new Rectangle((int)crop[0].Value, (int)crop[1].Value, (int)crop[2].Value, (int)crop[3].Value));
+            if (editor.ShowDialog(this) != DialogResult.OK) return;
+            var area = editor.Selection;
+            if (area.Right > 100000 || area.Bottom > 100000) throw new InvalidOperationException("区域超出配置范围。");
+            int[] values = { area.X, area.Y, area.Width, area.Height };
+            for (int i = 0; i < values.Length; i++) crop[i].Value = values[i];
+            Report("裁剪区域已填入；请点击“绑定所选窗口并保存”生效。");
+        }
+        catch (Exception e) { Report("无法编辑裁剪：" + e.Message); }
+        finally { editingCrop = false; RegisterKeys(); }
+    }
+    private void RememberMirrorSize(int index, Binding owner, Size size)
+    {
+        // A closing mirror must never write into a newly replaced binding.
+        if (!configurationReadable || !ReferenceEquals(settings.Slots[index], owner)) return;
+        if (owner.MirrorWidth == size.Width && owner.MirrorHeight == size.Height) return;
+        int oldWidth = owner.MirrorWidth, oldHeight = owner.MirrorHeight;
+        owner.MirrorWidth = size.Width; owner.MirrorHeight = size.Height;
+        try { settings.Save(); }
+        catch (Exception e) { owner.MirrorWidth = oldWidth; owner.MirrorHeight = oldHeight; Report("镜像尺寸保存失败：" + e.Message); }
+    }
+    private void UpdateSlotStates()
+    {
+        try
+        {
+            var candidates = Native.Windows();
+            PanelRecall.ReturnRecord? recovery = null;
+            bool recoveryUnreadable = false;
+            try { recovery = PanelRecall.Storage.Read<PanelRecall.ReturnRecord>("return.json"); }
+            catch { recoveryUnreadable = true; }
+            for (int i = 0; i < 5; i++)
+            {
+                var b = settings.Slots[i];
+                string state;
+                if (!configurationReadable) state = "配置读取失败 · 已保护原文件";
+                else if (!b.Configured) state = "未绑定";
+                else if (real.ActiveSlot == i) state = realError is not null ? "移动/放回失败 · 恢复记录保留：" + realError : real.Present ? "真实面板已召回" : "正在处理真实面板 · 恢复记录保留";
+                else if (recovery?.Slot == i) state = "有待处理的恢复记录";
+                else if (slotErrors[i] is { } error) state = error;
+                else if (mirrors[i] is { IsDisposed: false, Visible: true } mirror) state = mirror.DisplayStatus;
+                else
+                {
+                    var live = sources[i];
+                    bool alive = live is not null && live.IsAlive();
+                    var matches = alive ? new[] { live!.Identity } : candidates.Where(w => w.Matches(b)).ToArray();
+                    state = matches.Length == 0 ? "源窗口离线或标题已改变" : matches.Length > 1 ? "匹配不唯一 · 请重新绑定" :
+                        !Native.IsWindowVisible(matches[0].Handle) || Native.IsIconic(matches[0].Handle) ? "源窗口已隐藏/最小化" : "待召回";
+                }
+                if (b.Configured)
+                {
+                    bool complete = registered.Contains(100 + i * 2) && (!b.SeparateReturnKey || registered.Contains(101 + i * 2));
+                    state += keysPaused ? " · 快捷键已暂停" : editingCrop || summonKey.ContainsFocus || returnKey.ContainsFocus ? " · 快捷键录入/裁剪中暂停" : !complete ? " · 快捷键未注册或冲突" : " · " + b.SummonShortcut(i);
+                    if (b.Mode == SummonMode.Move && recoveryUnreadable) state += " · 恢复记录不可读，禁止新移动";
+                }
+                slotStates[i].Text = $"{i + 1} · {(b.Configured ? b.Title : "空槽位")} · {state}";
+            }
+        }
+        catch (Exception e) { Report("刷新槽位状态失败：" + e.Message); }
+    }
     private void StartPick(bool region)
     {
         pickRegion = region; pickDeadline = Environment.TickCount64 + 3000;
@@ -215,18 +336,22 @@ internal sealed class ManagerForm : Form
         if (Native.Describe(w.Handle) is not { } current || current.ProcessId != w.ProcessId || current.StartedAt != w.StartedAt)
         { Report("列表中的源窗口已退出或改变，请刷新后重新选择。"); return; }
         w = current;
+        if (mode.SelectedIndex == (int)SummonMode.Mirror && !new SourceWindow(w).ReadGeometry(new Binding {
+            X = (int)crop[0].Value, Y = (int)crop[1].Value, Width = (int)crop[2].Value, Height = (int)crop[3].Value }, out _, out _))
+        { Report("裁剪区域超出源窗口客户区，请重新预览裁剪后保存。"); return; }
         if (mode.SelectedIndex == (int)SummonMode.Move && !PanelRecall.Native.IsFloating(w.Handle))
         { Report("移动模式只能绑定真实浮动面板。停靠面板可选择镜像方式，或先手动拖成浮动窗口。"); return; }
         settings.Slots[i] = new Binding { Mode = (SummonMode)mode.SelectedIndex, ProcessName = w.ProcessName, WindowClass = w.WindowClass, Title = w.Title, PhotoshopMajor = w.PhotoshopMajor,
             SeparateReturnKey = separateKeys.Checked, SummonKey = summonKey.Value.Copy(), ReturnKey = returnKey.Value.Copy(),
             X = (int)crop[0].Value, Y = (int)crop[1].Value,
             Width = mode.SelectedIndex == (int)SummonMode.Move ? 0 : (int)crop[2].Value,
-            Height = mode.SelectedIndex == (int)SummonMode.Move ? 0 : (int)crop[3].Value, Keyboard = keyboard.Checked };
+            Height = mode.SelectedIndex == (int)SummonMode.Move ? 0 : (int)crop[3].Value, Keyboard = keyboard.Checked,
+            MirrorWidth = previous.MirrorWidth, MirrorHeight = previous.MirrorHeight };
         var conflicts = ShortcutConflicts();
         if (conflicts.Count > 0) { settings.Slots[i] = previous; Report("未保存：" + string.Join("、", conflicts)); return; }
         try { settings.Save(); }
         catch (Exception e) { settings.Slots[i] = previous; Report("保存失败：" + e.Message); return; }
-        HideMirror(i); sources[i] = new SourceWindow(w); LoadSlot(); RegisterKeys();
+        HideMirror(i); slotErrors[i] = null; sources[i] = new SourceWindow(w); LoadSlot(); RegisterKeys(); UpdateSlotStates();
     }
     private void ClearBinding()
     {
@@ -237,7 +362,7 @@ internal sealed class ManagerForm : Form
         var previous = settings.Slots[i]; settings.Slots[i] = new();
         try { settings.Save(); }
         catch (Exception e) { settings.Slots[i] = previous; Report("保存失败：" + e.Message); return; }
-        HideMirror(i); sources[i] = null; LoadSlot(); RegisterKeys();
+        HideMirror(i); slotErrors[i] = null; sources[i] = null; LoadSlot(); RegisterKeys(); UpdateSlotStates();
     }
     private void UnregisterKeys()
     {
@@ -266,6 +391,7 @@ internal sealed class ManagerForm : Form
     {
         UnregisterKeys();
         if (shuttingDown) return;
+        if (keysPaused || editingCrop) { Report(keysPaused ? "全局快捷键已暂停；可从托盘恢复。" : "裁剪时暂停全局快捷键。"); return; }
         if (summonKey.ContainsFocus || returnKey.ContainsFocus) return;
         var failures = ShortcutConflicts();
         if (failures.Count > 0) { Report("快捷键未注册：" + string.Join("、", failures)); return; }
@@ -296,6 +422,7 @@ internal sealed class ManagerForm : Form
         if (index < 0 || !settings.Slots[index].Configured) { Report("请先绑定此槽位。"); return; }
         try
         {
+            slotErrors[index] = null;
             SourceWindow source = Resolve(index);
             if (!Native.IsWindowVisible(source.Handle) || Native.IsIconic(source.Handle)) throw new InvalidOperationException("源窗口需要保持显示且未最小化。");
             if (settings.Slots[index].Mode == SummonMode.Move)
@@ -304,24 +431,28 @@ internal sealed class ManagerForm : Form
                 // an interactive mirror of that same window running as it moves.
                 for (int i = 0; i < mirrors.Length; i++)
                     if (mirrors[i]?.Source.Handle == source.Handle) HideMirror(i);
-                HideMirror(index); real.Summon(source, index);
+                HideMirror(index); real.Summon(source, index); realError = null;
                 Report("正在召回真实浮动面板并确认位置；" + ReturnHint(index)); return;
             }
             if (real.Moves(source)) throw new InvalidOperationException("此源窗口正在移动模式中使用，请先放回，再打开它的镜像。");
             if (mirrors[index] is { IsDisposed: false } existing && ReferenceEquals(existing.Source, source)) { existing.Summon(); return; }
             HideMirror(index);
-            var mirror = new MirrorForm(source, settings.Slots[index], index + 1, ReturnHint(index), Report);
+            var owner = settings.Slots[index];
+            var mirror = new MirrorForm(source, owner, index + 1, ReturnHint(index), Report);
+            mirror.SizeRemembered += size => RememberMirrorSize(index, owner, size);
             mirrors[index] = mirror;
             mirror.Summon();
         }
-        catch (Exception e) { HideMirror(index); Report("无法召回面板：" + e.Message); }
+        catch (Exception e) { HideMirror(index); slotErrors[index] = "召回失败：" + e.Message; NotifyFailure(slotErrors[index]!); }
+        finally { UpdateSlotStates(); }
     }
     private void CloseSlot(int index)
     {
         if (index < 0) return;
         HideMirror(index);
-        try { real.Restore(index); }
-        catch (Exception e) { Report("无法放回真实面板，恢复记录已保留：" + e.Message); }
+        try { bool relevant = real.ActiveSlot == index; real.Restore(index); slotErrors[index] = null; if (relevant) realError = null; }
+        catch (Exception e) { realError = e.Message; slotErrors[index] = "放回失败：" + e.Message; NotifyFailure("无法放回真实面板，恢复记录已保留：" + e.Message); }
+        UpdateSlotStates();
     }
     private string ReturnHint(int index)
     {

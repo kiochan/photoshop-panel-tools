@@ -17,8 +17,12 @@ The [official download and help page](https://kiochan.one/releases/panel-tools) 
 
 1. Extract the complete ZIP into a writable local folder.
 2. Run `helper/PanelMirror.exe`; the .NET 8 runtime is bundled.
-3. Choose a window, mode and shortcut for each slot, then save the bindings. Float the source panel manually before choosing move mode.
+3. Choose a window, mode and shortcut for each slot, then save the bindings. In mirror mode, use the visual crop preview to drag a rectangle around the panel; numeric coordinates remain available. Float the source panel manually before choosing move mode.
 4. Press the configured key to summon, then press it again to close the mirror or restore the real panel.
+
+Each slot remembers a manually resized mirror's client size in DPI-independent units. New mirrors initially fit the source region to the screen. The five-slot status overview reports missing or ambiguous windows, shortcut registration problems, mirror pauses and outstanding real-panel recovery.
+
+Closing the configuration window keeps the helper running in the Windows notification area. Double-click its tray icon, choose **打开配置** (open configuration), or launch the helper again to bring the configuration back. The tray menu can pause/resume shortcuts, close all mirrors, restore the real panel, or exit after attempting restoration. **仅退出，保留恢复记录** (exit and preserve recovery) remains available in the configuration window when restoration cannot complete. Windows notification settings control whether failure balloons are shown.
 
 The `CSXS` folder provides an optional CEP launcher; native operation does not require installing the CEP extension. Installing unsigned CEP extensions depends on the host configuration. Keep the complete extracted package together.
 

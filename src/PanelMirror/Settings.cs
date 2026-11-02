@@ -21,6 +21,9 @@ internal sealed class Binding
     public int Width { get; set; }
     public int Height { get; set; }
     public bool Keyboard { get; set; }
+    // Logical (96 DPI) client size; zero keeps automatic first-use sizing.
+    public int MirrorWidth { get; set; }
+    public int MirrorHeight { get; set; }
     public bool Configured => ProcessName.Length > 0;
 }
 
@@ -43,6 +46,9 @@ internal sealed class Settings
                 slot.X > 100000 || slot.Y > 100000 || slot.Width > 100000 || slot.Height > 100000 ||
                 (slot.Width == 0) != (slot.Height == 0))
                 throw new InvalidDataException("槽位的窗口标识或裁剪数据无效。");
+            if (slot.MirrorWidth < 0 || slot.MirrorHeight < 0 || slot.MirrorWidth > 10000 || slot.MirrorHeight > 10000 ||
+                (slot.MirrorWidth == 0) != (slot.MirrorHeight == 0))
+                throw new InvalidDataException("镜像尺寸无效。");
         }
         return settings;
     }

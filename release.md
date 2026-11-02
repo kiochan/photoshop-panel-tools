@@ -9,6 +9,16 @@
 }
 ---
 
+## New in 0.2.0
+
+- **Visual crop editor:** drag a rectangle on a live source-window preview, with numeric coordinates still available. Confirm the selection, then save the binding.
+- **Per-slot mirror size memory:** manually resized mirrors keep their logical client size across sessions; new mirrors initially fit the source region to the screen.
+- **Notification-area controls:** closing configuration keeps the helper running. Open configuration again from the tray or by launching the helper again; pause shortcuts, close mirrors or restore the real panel from the tray menu.
+- **Slot status overview:** see missing or ambiguous windows, shortcut registration problems, mirror pauses and outstanding recovery. Failed operations also request a Windows notification.
+- Shared native source compiles without warnings in .NET 8 and in the optional C# 5 / .NET Framework prototype. Both native builds now treat warnings as errors.
+
+This remains a development trial. The new desktop interactions, mixed-DPI behavior and Photoshop compatibility still require runtime verification.
+
 ## Choose how each panel appears
 
 - **Mirror and forward input:** keep the original panel in place and show its window image near your pointer. Acceptance of background input depends on the source plugin.

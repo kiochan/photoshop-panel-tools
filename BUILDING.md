@@ -11,6 +11,8 @@ npm run package
 
 `npm run build:recall` optionally compiles the standalone .NET Framework prototype. CI builds the unified tool, not that optional executable. `npm run prepare:source` produces an allowlisted source snapshot; generated files are never committed. `npm run clean` removes only managed build output.
 
+Both native builds treat compiler warnings as errors. The optional prototype explicitly compiles with `/langversion:5`; shared files use `NET8_0_OR_GREATER` guards for modern nullable-analysis attributes, keeping the C# 5 / .NET Framework build free of those attribute dependencies. To compile the prototype without packaging or launching it, run `powershell.exe -NoProfile -File scripts/build-recall.ps1`.
+
 Failed compilation exits nonzero. Archives are created only from a new successful staging directory; a failed build cannot repack an earlier `dist` directory. Package metadata records `runtimeVerified: false`; compilation is not host validation. Keep LICENSE, THIRD_PARTY.md and runtime notices in distributed packages.
 
 ## Website publication

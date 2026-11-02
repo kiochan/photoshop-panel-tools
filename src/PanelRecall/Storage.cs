@@ -32,13 +32,19 @@ namespace PanelRecall
         [DataMember] public long Window, Cookie, Started;
         [DataMember] public uint Pid, HostPid;
         [DataMember] public long HostStarted;
-        [DataMember] public string Class, Exe, Title;
+        [DataMember] public string Class = "", Exe = "", Title = "";
         [DataMember] public int Left, Top, Width, Height;
     }
     internal static class Storage
     {
         internal static string Folder { get { return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "PanelRecall"); } }
         private static string FilePath(string name) { return Path.Combine(Folder, name); }
+        // Missing files and serialized null have always meant "no record".
+        // Keep that contract visible to the modern compiler without requiring
+        // nullable-reference syntax or attributes from .NET Framework.
+#if NET8_0_OR_GREATER
+        [return: System.Diagnostics.CodeAnalysis.MaybeNull]
+#endif
         internal static T Read<T>(string name) where T : class
         {
             string path = FilePath(name);
@@ -46,7 +52,9 @@ namespace PanelRecall
             using (var stream = File.OpenRead(path))
             {
                 if (stream.Length > 1024 * 1024) throw new InvalidDataException("配置文件过大。");
-                return (T)new DataContractJsonSerializer(typeof(T)).ReadObject(stream);
+                var value = new DataContractJsonSerializer(typeof(T)).ReadObject(stream);
+                if (value == null) return null;
+                return (T)value;
             }
         }
         internal static void Write<T>(string name, T value)

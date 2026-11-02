@@ -16,7 +16,7 @@ $recallShared = @(
     (Join-Path $recallRoot 'shared\windows-native\CanvasClickHook.cs'),
     (Join-Path $recallRoot 'shared\windows-native\ProcessIdentity.cs')
 )
-& $recallCompiler /nologo /codepage:65001 /optimize+ /target:winexe /platform:x64 `
+& $recallCompiler /nologo /codepage:65001 /langversion:5 /warnaserror+ /optimize+ /target:winexe /platform:x64 `
     /reference:System.Windows.Forms.dll /reference:System.Drawing.dll /reference:System.Runtime.Serialization.dll `
     "/win32manifest:$(Join-Path $recallSource 'app.manifest')" "/out:$(Join-Path $recallOutput 'PanelRecall.exe')" `
     $recallSources $recallShared

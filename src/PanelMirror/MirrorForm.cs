@@ -16,6 +16,9 @@ internal sealed class MirrorForm : Form
     private Size sourceSize;
     private bool available, sourceAlive, closing;
     private string? inputError;
+    internal string DisplayStatus { get; private set; } = "正在打开镜像";
+    internal event Action<Size>? SizeRemembered;
+    private Size? rememberedSize;
 
     internal MirrorForm(SourceWindow source, Binding binding, int slot, string returnHint, Action<string> report)
     {
@@ -34,7 +37,8 @@ internal sealed class MirrorForm : Form
         Resize += (_, _) => { CancelInput(); RefreshThumbnail(); };
         DpiChanged += (_, _) => { CancelInput(); BeginInvoke((Action)RefreshThumbnail); };
         Deactivate += (_, _) => CancelInput();
-        FormClosing += (_, _) => { CancelInput(); closing = true; timer.Stop(); };
+        ResizeEnd += (_, _) => RememberSize();
+        FormClosing += (_, _) => { CancelInput(); closing = true; timer.Stop(); if (rememberedSize is { } size) SizeRemembered?.Invoke(size); };
         FormClosed += (_, _) => { timer.Dispose(); UnregisterThumbnail(); };
     }
     protected override bool ShowWithoutActivation => true;
@@ -44,6 +48,22 @@ internal sealed class MirrorForm : Form
         CancelInput(); inputError = null;
         if (!Native.GetCursorPos(out var p)) throw new Win32Exception(Marshal.GetLastWin32Error());
         var work = Screen.FromPoint(new Point(p.X, p.Y)).WorkingArea;
+        if (!Visible)
+        {
+            // Let WinForms establish this window's target-monitor DPI before
+            // applying logical saved dimensions (avoid scaling them twice).
+            StartPosition = FormStartPosition.Manual;
+            Location = new Point(p.X, p.Y);
+            Show();
+            double dpi = DeviceDpi / 96.0;
+            if (binding.MirrorWidth > 0 && binding.MirrorHeight > 0)
+                ClientSize = new Size((int)Math.Round(binding.MirrorWidth * dpi), (int)Math.Round(binding.MirrorHeight * dpi));
+            else if (Source.ReadGeometry(binding, out _, out var area))
+            {
+                double scale = Math.Min(1, Math.Min(work.Width * .7 / area.Width, work.Height * .7 / area.Height));
+                ClientSize = new Size(Math.Max(280, (int)(area.Width * scale)), Math.Max(180, (int)(area.Height * scale) + caption.Height + note.Height));
+            }
+        }
         int width = Math.Min(Width, work.Width), height = Math.Min(Height, work.Height);
         int offset = Math.Max(12, (int)Math.Round(18.0 * DeviceDpi / 96));
         Bounds = new Rectangle(Math.Clamp(p.X + offset, work.Left, work.Right - width), Math.Clamp(p.Y + offset, work.Top, work.Bottom - height), width, height);
@@ -54,6 +74,13 @@ internal sealed class MirrorForm : Form
             if (hr < 0) { UnregisterThumbnail(); Marshal.ThrowExceptionForHR(hr); }
         }
         RefreshThumbnail(); timer.Start();
+    }
+    private void RememberSize()
+    {
+        if (WindowState != FormWindowState.Normal || !Visible) return;
+        rememberedSize = new Size(Math.Clamp((int)Math.Round(ClientSize.Width * 96.0 / DeviceDpi), 1, 10000),
+            Math.Clamp((int)Math.Round(ClientSize.Height * 96.0 / DeviceDpi), 1, 10000));
+        SizeRemembered?.Invoke(rememberedSize.Value);
     }
     private void UnregisterThumbnail()
     {
@@ -80,6 +107,7 @@ internal sealed class MirrorForm : Form
         int result = Native.DwmUpdateThumbnailProperties(thumbnail, ref props);
         if (result < 0) { Pause($"镜像更新失败：0x{result:X8}"); return; }
         available = true;
+        DisplayStatus = inputError is null ? "镜像已打开 · 输入接受情况需手动确认" : inputError;
         note.Text = inputError is null ? "  实时镜像 · 笔按鼠标处理 · 不移动系统指针" : "  " + inputError;
     }
     private void Pause(string reason, bool destroyed = false)
@@ -88,6 +116,7 @@ internal sealed class MirrorForm : Form
         var props = new Native.ThumbnailProperties { Flags = 8, Visible = false };
         if (thumbnail != 0) Native.DwmUpdateThumbnailProperties(thumbnail, ref props);
         note.Text = "  " + reason;
+        DisplayStatus = "镜像暂停：" + reason;
         if (destroyed) { timer.Stop(); UnregisterThumbnail(); }
     }
     private bool CanForward()

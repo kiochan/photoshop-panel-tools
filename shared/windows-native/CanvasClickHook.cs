@@ -33,7 +33,8 @@ internal static class CanvasClickHook
     private sealed class Scope { public uint ArmedAt; }
     private sealed class Press
     {
-        public Scope Scope;
+        public readonly Scope Scope;
+        public Press(Scope scope) { Scope = scope; }
         public Point Point;
         public IntPtr Window;
         public long Time;
@@ -43,7 +44,15 @@ internal static class CanvasClickHook
     private static readonly ManualResetEvent ready = new ManualResetEvent(false);
     private static readonly object sync = new object();
     private static readonly Queue<Press> presses = new Queue<Press>();
+    // Optional lifecycle state. Attribute branches are omitted by the C# 5 /
+    // .NET Framework build; the .NET 8 build keeps nullable analysis enabled.
+#if NET8_0_OR_GREATER
+    [System.Diagnostics.CodeAnalysis.AllowNull, System.Diagnostics.CodeAnalysis.MaybeNull]
+#endif
     private static Scope scope;
+#if NET8_0_OR_GREATER
+    [System.Diagnostics.CodeAnalysis.MaybeNull]
+#endif
     private static Thread thread;
     private static uint threadId;
     private static IntPtr hook;
@@ -125,15 +134,17 @@ internal static class CanvasClickHook
     {
         try
         {
-            Scope armed = Interlocked.CompareExchange(ref scope, null, null);
+            var armed = Interlocked.CompareExchange(ref scope, null, null);
             if (code == 0 && wParam.ToInt64() == 0x0201 && armed != null)
             {
-                var data = (MouseData)Marshal.PtrToStructure(lParam, typeof(MouseData));
+                var raw = Marshal.PtrToStructure(lParam, typeof(MouseData));
+                if (raw == null) return CallNextHookEx(hook, code, wParam, lParam);
+                var data = (MouseData)raw;
                 if (unchecked((int)(data.Time - armed.ArmedAt)) < 0 ||
                     unchecked((uint)(GetTickCount() - data.Time)) > 400) return CallNextHookEx(hook, code, wParam, lParam);
                 // Do not discard injected/promoted mouse events: tablet drivers
                 // may use those. No pressure, pointer or WinTab data is altered.
-                var press = new Press { Scope = armed, Point = data.Point, Window = WindowFromPoint(data.Point), Time = Stopwatch.GetTimestamp() };
+                var press = new Press(armed) { Point = data.Point, Window = WindowFromPoint(data.Point), Time = Stopwatch.GetTimestamp() };
                 lock (sync)
                 {
                     while (presses.Count >= 32) presses.Dequeue();
@@ -149,7 +160,7 @@ internal static class CanvasClickHook
         if (hostProcess == 0 || hud == IntPtr.Zero) return false;
         Press[] batch;
         lock (sync) { batch = presses.ToArray(); presses.Clear(); }
-        Scope armed = Interlocked.CompareExchange(ref scope, null, null);
+        var armed = Interlocked.CompareExchange(ref scope, null, null);
         foreach (Press press in batch)
         {
             double age = (Stopwatch.GetTimestamp() - press.Time) * 1000.0 / Stopwatch.Frequency;

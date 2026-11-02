@@ -75,6 +75,9 @@ namespace PanelRecall
             }
             return ProcessIdentity.PhotoshopAncestor(pid);
         }
+#if NET8_0_OR_GREATER
+        [return: System.Diagnostics.CodeAnalysis.MaybeNull]
+#endif
         internal static WindowInfo Describe(IntPtr window)
         {
             if (!IsFloating(window) || !IsWindowVisible(window)) return null;
@@ -85,7 +88,9 @@ namespace PanelRecall
                 using (var process = Process.GetProcessById((int)pid))
                 {
                     var title = new StringBuilder(1024); GetWindowText(window, title, title.Capacity);
-                    string path = process.MainModule.FileName;
+                    var module = process.MainModule;
+                    if (module == null) return null;
+                    string path = module.FileName;
                     uint host = PhotoshopHost(window, pid);
                     return new WindowInfo { Handle = window, Pid = pid, Started = process.StartTime.ToUniversalTime().Ticks,
                         Title = title.ToString(), Class = ClassName(window), Exe = path, HostPid = host };
@@ -98,7 +103,7 @@ namespace PanelRecall
             var result = new List<WindowInfo>();
             EnumWindows(delegate(IntPtr window, IntPtr data)
             {
-                WindowInfo item = Describe(window);
+                var item = Describe(window);
                 if (item != null && (!photoshopOnly || item.HostPid != 0)) result.Add(item);
                 return true;
             }, IntPtr.Zero);
@@ -111,7 +116,7 @@ namespace PanelRecall
         public IntPtr Handle;
         public uint Pid, HostPid;
         public long Started;
-        public string Title, Class, Exe;
+        public string Title = "", Class = "", Exe = "";
         public override string ToString()
         { return (Title.Length == 0 ? "（无标题）" : Title) + " · " + System.IO.Path.GetFileName(Exe) + " · " + Class + " · PID " + Pid; }
         internal Binding Binding()

@@ -62,7 +62,7 @@ namespace PanelRecall
         }
         internal static RecallSession Capture(WindowInfo chosen, int slot)
         {
-            WindowInfo current = Native.Describe(chosen.Handle);
+            var current = Native.Describe(chosen.Handle);
             if (current == null || current.Pid != chosen.Pid || current.Started != chosen.Started || current.Class != chosen.Class)
                 throw new InvalidOperationException("源窗口已改变，请刷新列表后重新绑定。");
             RequireMovable(current.Handle);
@@ -93,7 +93,7 @@ namespace PanelRecall
                 // Keep the stamp if our durable record exists, so recovery is
                 // still possible even though no first move has been issued.
                 bool persisted = false;
-                try { ReturnRecord saved = Storage.Read<ReturnRecord>("return.json"); persisted = saved != null && saved.Cookie == record.Cookie && saved.Window == record.Window; }
+                try { var saved = Storage.Read<ReturnRecord>("return.json"); persisted = saved != null && saved.Cookie == record.Cookie && saved.Window == record.Window; }
                 catch { persisted = true; }
                 if (!persisted && result.IdentityValid()) Native.RemoveProp(current.Handle, Native.Property);
                 result.marked = false; result.Dispose(); throw;
@@ -157,6 +157,9 @@ namespace PanelRecall
         { return Math.Abs((long)rect.Left - expected.Left) <= 3 && Math.Abs((long)rect.Top - expected.Top) <= 3; }
         internal void EnableCanvasReturn()
         { if (phase == Phase.Present && host != IntPtr.Zero && Native.WaitForSingleObject(host, 0) == 258) CanvasClickHook.Arm(); }
+#if NET8_0_OR_GREATER
+        [return: System.Diagnostics.CodeAnalysis.MaybeNull]
+#endif
         internal string Tick(bool autoReturn)
         {
             if (Finished || phase == Phase.Ready || phase == Phase.Failed) return null;
