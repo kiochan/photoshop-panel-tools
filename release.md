@@ -17,6 +17,18 @@
 - 独立桌面演示中验证了裁剪、镜像点击和滑块、真实窗口移动与恢复；仍未启动 Photoshop，不能把演示结果视为插件兼容性验收。
 - The repository READMEs include real English/Chinese configuration, crop and mirror screenshots using project-authored synthetic controls. No Photoshop or private plugin imagery is included.
 
+## Interface screenshots / 界面截图
+
+These are real window captures using an independent synthetic source, not Photoshop/plugin compatibility evidence. 以下为独立合成面板的真实界面截图，不是 Photoshop 或插件兼容性证明。
+
+![Chinese configuration / 中文配置](screenshots/configuration-zh-CN.jpg)
+
+![English configuration / 英文配置](screenshots/configuration-en.jpg)
+
+![Visual crop preview / 可视化裁剪](screenshots/crop-en.jpg)
+
+![Live synthetic mirror after click and slider tests / 点击及滑块测试后的合成面板镜像](screenshots/mirror-demo.jpg)
+
 ## Panel recall features
 
 - **Visual crop editor:** drag a rectangle on a live source-window preview, with numeric coordinates still available. Confirm the selection, then save the binding.

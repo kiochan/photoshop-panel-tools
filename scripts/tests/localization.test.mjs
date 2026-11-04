@@ -147,6 +147,7 @@ test("bilingual documentation links and reviewed screenshot formats are valid", 
   for (const name of [
     "README.md",
     "README.zh-CN.md",
+    "release.md",
     "docs/VERIFICATION.md",
     "docs/SCREENSHOTS.md",
   ]) {
@@ -159,6 +160,13 @@ test("bilingual documentation links and reviewed screenshot formats are valid", 
   }
   const images = await readdir(path.join(root, "screenshots"));
   assert.equal(images.length, 4);
+  const release = await readFile(path.join(root, "release.md"), "utf8");
+  const embedded = [...release.matchAll(/!\[[^\]]*\]\(screenshots\/([^()]+)\)/g)].map((m) => m[1]);
+  assert.deepEqual(
+    embedded.sort(),
+    [...images].sort(),
+    "The public release page must embed each reviewed screenshot",
+  );
   for (const name of images) {
     assert.match(name, /^[a-zA-Z0-9][a-zA-Z0-9._-]*\.jpg$/);
     const data = await readFile(path.join(root, "screenshots", name));
