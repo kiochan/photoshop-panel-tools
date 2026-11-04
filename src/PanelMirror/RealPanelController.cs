@@ -14,15 +14,15 @@ internal sealed class RealPanelController : IDisposable
     internal void Summon(SourceWindow source, int slot)
     {
         if (active is not null && ActiveSlot != slot)
-            throw new InvalidOperationException("请先放回当前真实面板，再召回另一个移动模式槽位。");
-        if (!source.IsAlive()) throw new InvalidOperationException("源窗口身份已变化，请重新绑定。");
-        if (!PanelRecall.Native.GetCursorPos(out var point)) throw new InvalidOperationException("无法读取指针位置。");
+            throw new InvalidOperationException(UiText.T("请先放回当前真实面板，再召回另一个移动模式槽位。"));
+        if (!source.IsAlive()) throw new InvalidOperationException(UiText.T("源窗口身份已变化，请重新绑定。"));
+        if (!PanelRecall.Native.GetCursorPos(out var point)) throw new InvalidOperationException(UiText.T("无法读取指针位置。"));
         if (active is null)
         {
-            if (HasRecovery) throw new InvalidOperationException("有待处理的真实面板恢复记录，请先点击恢复。");
+            if (HasRecovery) throw new InvalidOperationException(UiText.T("有待处理的真实面板恢复记录，请先点击恢复。"));
             var chosen = PanelRecall.Native.Describe(source.Handle);
             if (chosen is null || chosen.Pid != source.Identity.ProcessId || chosen.Started != source.Identity.StartedAt)
-                throw new InvalidOperationException("请选择真实浮动面板；移动模式不能移动 PS 主窗口或停靠子面板。");
+                throw new InvalidOperationException(UiText.T("请选择真实浮动面板；移动模式不能移动 PS 主窗口或停靠子面板。"));
             active = PanelRecall.RecallSession.Capture(chosen, slot);
         }
         active.Summon(point);
@@ -48,7 +48,7 @@ internal sealed class RealPanelController : IDisposable
         if (active is null) return null;
         try
         {
-            if (active.DiscardIfGone()) { Complete(); return "原面板已关闭，已清理失效恢复记录。"; }
+            if (active.DiscardIfGone()) { Complete(); return UiText.T("原面板已关闭，已清理失效恢复记录。"); }
             string? message = active.Tick(false);
             if (active.Finished) Complete();
             return message;

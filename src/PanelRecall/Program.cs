@@ -12,7 +12,7 @@ namespace PanelRecall
             bool first;
             using (var single = new Mutex(true, "Local\\PanelRecall.Configuration.v1", out first))
             {
-                if (!first) { MessageBox.Show("面板召回工具已在运行。", "Panel Recall"); return; }
+                if (!first) { MessageBox.Show(UiText.T("面板召回工具已在运行。"), "Panel Recall"); return; }
                 try
                 {
                     Native.InitializeDpi();

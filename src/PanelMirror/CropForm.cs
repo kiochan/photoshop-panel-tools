@@ -7,7 +7,7 @@ internal sealed class CropForm : Form
     private readonly SourceWindow source;
     private readonly Panel preview = new() { Dock = DockStyle.Fill, BackColor = Color.FromArgb(25, 25, 28) };
     private readonly Label description = new() { Dock = DockStyle.Top, Height = 48 };
-    private readonly Button accept = new() { Text = "使用此区域", AutoSize = true, Enabled = false };
+    private readonly Button accept = new() { Text = UiText.T("使用此区域"), AutoSize = true, Enabled = false };
     // A separate owned transparent window keeps the selection above the DWM
     // thumbnail. Ordinary client painting can be covered by DWM composition.
     private readonly CropOutline outline = new();
@@ -24,16 +24,16 @@ internal sealed class CropForm : Form
     {
         this.source = source;
         if (!source.IsAlive() || !source.ReadGeometry(new Binding(), out sourceSize, out _))
-            throw new InvalidOperationException("无法读取源窗口客户区。");
+            throw new InvalidOperationException(UiText.T("无法读取源窗口客户区。"));
         Selection = new Rectangle(Point.Empty, sourceSize).Contains(initial) && initial.Width > 0 && initial.Height > 0
             ? initial : new Rectangle(Point.Empty, sourceSize);
-        Text = "可视化裁剪 · 在预览中拖框选择区域";
+        Text = UiText.T("可视化裁剪 · 在预览中拖框选择区域");
         AutoScaleMode = AutoScaleMode.Dpi;
         ClientSize = new Size(900, 650); MinimumSize = new Size(500, 360);
         StartPosition = FormStartPosition.CenterParent;
         var actions = new FlowLayoutPanel { Dock = DockStyle.Bottom, Height = 44, AutoSize = true };
-        var reset = new Button { Text = "整个客户区", AutoSize = true };
-        var cancel = new Button { Text = "取消", AutoSize = true, DialogResult = DialogResult.Cancel };
+        var reset = new Button { Text = UiText.T("整个客户区"), AutoSize = true };
+        var cancel = new Button { Text = UiText.T("取消"), AutoSize = true, DialogResult = DialogResult.Cancel };
         reset.Click += (_, _) => { Selection = new Rectangle(Point.Empty, sourceSize); UpdatePreview(); };
         accept.Click += (_, _) =>
         {
@@ -64,7 +64,7 @@ internal sealed class CropForm : Form
         Shown += (_, _) =>
         {
             int hr = Native.DwmRegisterThumbnail(Handle, source.Handle, out thumbnail);
-            if (hr < 0) { description.Text = $"无法打开预览（0x{hr:X8}），请取消后使用数字裁剪。"; return; }
+            if (hr < 0) { description.Text = UiText.F("无法打开预览（0x{0:X8}），请取消后使用数字裁剪。", hr); return; }
             UpdatePreview(); timer.Start();
         };
         timer.Tick += (_, _) => UpdatePreview();
@@ -79,7 +79,7 @@ internal sealed class CropForm : Form
         {
             previewReady = false; accept.Enabled = false; dragging = false; preview.Capture = false;
             outline.Hide();
-            description.Text = "源窗口已隐藏、退出或改变尺寸。请取消并重新打开裁剪。";
+            description.Text = UiText.T("源窗口已隐藏、退出或改变尺寸。请取消并重新打开裁剪。");
         }
         return valid;
     }
@@ -108,7 +108,7 @@ internal sealed class CropForm : Form
         if (!previewReady)
         {
             accept.Enabled = false; dragging = false; preview.Capture = false; outline.Hide();
-            description.Text = $"预览更新失败（0x{hr:X8}）。请取消后重试。"; return;
+            description.Text = UiText.F("预览更新失败（0x{0:X8}）。请取消后重试。", hr); return;
         }
         UpdateEdges();
     }
@@ -126,7 +126,7 @@ internal sealed class CropForm : Form
         outline.Selection = Rectangle.FromLTRB(left, top, Math.Max(left + 2, right - 1), Math.Max(top + 2, bottom - 1));
         if (!outline.Visible) outline.Show(this);
         outline.Invalidate();
-        description.Text = $"拖框选择需要召回的面板；此处不向源窗口发送操作。\nX {Selection.X} · Y {Selection.Y} · 宽 {Selection.Width} · 高 {Selection.Height}；确认后仍需保存绑定。";
+        description.Text = UiText.F("拖框选择需要召回的面板；此处不向源窗口发送操作。\nX {0} · Y {1} · 宽 {2} · 高 {3}；确认后仍需保存绑定。", Selection.X, Selection.Y, Selection.Width, Selection.Height);
     }
 
     private sealed class CropOutline : Form
@@ -138,7 +138,6 @@ internal sealed class CropForm : Form
             StartPosition = FormStartPosition.Manual;
             AutoScaleMode = AutoScaleMode.None;
             BackColor = Color.Magenta; TransparencyKey = Color.Magenta;
-            Enabled = false;
         }
         protected override bool ShowWithoutActivation => true;
         protected override CreateParams CreateParams
@@ -155,6 +154,13 @@ internal sealed class CropForm : Form
             base.OnPaint(e);
             using var pen = new Pen(Color.Lime, 2);
             e.Graphics.DrawRectangle(pen, Selection);
+        }
+        protected override void WndProc(ref Message message)
+        {
+            // Hit-test transparency keeps the outline enabled (required by
+            // WinForms Show) while all selection input reaches the editor.
+            if (message.Msg == 0x84) { message.Result = (nint)(-1); return; }
+            base.WndProc(ref message);
         }
     }
 }

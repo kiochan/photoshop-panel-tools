@@ -29,6 +29,9 @@ foreach ($taskName in @('index.html', 'panel.js', 'panel.css', 'CSXS')) {
     Copy-Item -LiteralPath (Join-Path $appRoot ('cep\' + $taskName)) -Destination $taskStage -Recurse
 }
 Copy-Item -LiteralPath (Join-Path $appRoot 'README.md') -Destination $taskStage
+Copy-Item -LiteralPath (Join-Path $appRoot 'README.zh-CN.md') -Destination $taskStage
+Copy-Item -LiteralPath (Join-Path $appRoot 'screenshots') -Destination $taskStage -Recurse
+Copy-Item -LiteralPath (Join-Path $appRoot 'docs') -Destination $taskStage -Recurse
 foreach ($taskDocument in @('COMPATIBILITY.md', 'LICENSE', 'THIRD_PARTY.md')) { Copy-Item -LiteralPath (Join-Path $workspaceRoot $taskDocument) -Destination $taskStage }
 $stagedManifestPath = Join-Path $taskStage 'CSXS\manifest.xml'
 $stagedManifest = [xml](Get-Content -LiteralPath $stagedManifestPath -Raw)

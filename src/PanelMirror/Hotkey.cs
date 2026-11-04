@@ -30,7 +30,7 @@ internal sealed class HotkeyBox : TextBox
         var value = new Hotkey { Key = key, Modifiers =
             ((keyData & Keys.Alt) != 0 ? 1u : 0u) | ((keyData & Keys.Control) != 0 ? 2u : 0u) | ((keyData & Keys.Shift) != 0 ? 4u : 0u) };
         if (value.Valid) Set(value);
-        else Rejected?.Invoke("请使用 Ctrl／Alt／Shift 组合键或功能键；不支持裸字符键、Win 键组合及系统保留的 F12。");
+        else Rejected?.Invoke(UiText.T("请使用 Ctrl／Alt／Shift 组合键或功能键；不支持裸字符键、Win 键组合及系统保留的 F12。"));
         return true;
     }
 }

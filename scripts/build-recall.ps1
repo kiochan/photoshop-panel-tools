@@ -2,6 +2,8 @@ param([switch]$Package)
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'build-archive.ps1')
 $recallRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
+$recallVersion = (Get-Content -LiteralPath (Join-Path $recallRoot 'package.json') -Raw | ConvertFrom-Json).version
+if ($recallVersion -notmatch '^\d+\.\d+\.\d+$') { throw 'Invalid Panel Tools version.' }
 $recallSource = Join-Path $recallRoot 'src\PanelRecall'
 $recallOutput = Join-Path $recallRoot 'dist\panel-recall'
 $recallDestination = $recallOutput
@@ -13,10 +15,12 @@ if (-not (Test-Path -LiteralPath $recallCompiler)) { throw 'Windows .NET Framewo
 New-Item -ItemType Directory -Path $recallOutput -Force | Out-Null
 $recallSources = @(Get-ChildItem -LiteralPath $recallSource -Filter '*.cs' | Sort-Object Name | ForEach-Object FullName)
 $recallShared = @(
+    (Join-Path $recallRoot 'shared\windows-native\UiText.cs'),
     (Join-Path $recallRoot 'shared\windows-native\CanvasClickHook.cs'),
     (Join-Path $recallRoot 'shared\windows-native\ProcessIdentity.cs')
 )
 & $recallCompiler /nologo /codepage:65001 /langversion:5 /warnaserror+ /optimize+ /target:winexe /platform:x64 `
+    "/resource:$(Join-Path $recallRoot 'shared\windows-native\strings.en.json'),PanelTools.Strings.en.json" `
     /reference:System.Windows.Forms.dll /reference:System.Drawing.dll /reference:System.Runtime.Serialization.dll `
     "/win32manifest:$(Join-Path $recallSource 'app.manifest')" "/out:$(Join-Path $recallOutput 'PanelRecall.exe')" `
     $recallSources $recallShared
@@ -30,7 +34,7 @@ $recallInventory = @(Get-ChildItem -LiteralPath $recallOutput -File | Where-Obje
     [ordered]@{ path = $_.Name; bytes = $_.Length; sha256 = Get-BuildHash $_.FullName }
 })
 $recallManifest = [ordered]@{
-    name = 'Panel Recall'; version = '0.1.0'; runtimeVerified = $false
+    name = 'Panel Recall'; version = $recallVersion; runtimeVerified = $false
     route = 'move-existing-floating-window'; target = 'Windows x64 / .NET Framework 4.8'
     compatibilityPolicy = 'Photoshop 2019 (20.x) and later'; compatibilityTargets = @('PS 2019', 'PS 2020', 'PS 2025'); files = $recallInventory
     sharedSources = @($recallShared | ForEach-Object { [ordered]@{ path = $_.Substring($recallRoot.Length + 1); sha256 = Get-BuildHash $_ } })
@@ -45,9 +49,10 @@ Write-Output "Built $recallDestination (not launched)."
 if ($Package) {
     $recallArtifacts = Join-Path $recallRoot 'artifacts'
     New-Item -ItemType Directory -Path $recallArtifacts -Force | Out-Null
-    $recallZip = Join-Path $recallArtifacts 'panel-recall-0.1.0.zip'
+    $recallArchiveName = 'panel-recall-' + $recallVersion + '.zip'
+    $recallZip = Join-Path $recallArtifacts $recallArchiveName
     Write-BuildArchive $recallOutput $recallZip
     $recallHash = Get-BuildHash $recallZip
-    [IO.File]::WriteAllText(($recallZip + '.sha256'), ($recallHash + '  panel-recall-0.1.0.zip' + [Environment]::NewLine), $recallUtf8)
+    [IO.File]::WriteAllText(($recallZip + '.sha256'), ($recallHash + '  ' + $recallArchiveName + [Environment]::NewLine), $recallUtf8)
     Write-Output "Packaged $recallZip`nSHA256 $recallHash"
 }

@@ -5,3 +5,5 @@ p { margin: 10px 0; }
 button { padding: 8px 16px; color: #fff; background: #425aca; border: 0; border-radius: 5px; cursor: pointer; }
 button:disabled { opacity: .5; cursor: default; }
 #status { color: #bbbfc9; overflow-wrap: anywhere; }
+select { margin-left: 8px; padding: 4px; background: #383a40; color: #fff; border: 1px solid #777; }
+button:focus, select:focus { outline: 2px solid #a8b8ff; outline-offset: 2px; }

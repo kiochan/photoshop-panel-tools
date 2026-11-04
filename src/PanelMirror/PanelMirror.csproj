@@ -9,6 +9,9 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
   <ItemGroup>
+    <InternalsVisibleTo Include="PanelTools.Demo" />
+    <EmbeddedResource Include="..\..\shared\windows-native\strings.en.json" LogicalName="PanelTools.Strings.en.json" WithCulture="false" />
+    <Compile Include="..\..\shared\windows-native\UiText.cs" Link="UiText.cs" />
     <Compile Include="..\PanelRecall\Native.cs" Link="Recall\Native.cs" />
     <Compile Include="..\PanelRecall\Storage.cs" Link="Recall\Storage.cs" />
     <Compile Include="..\PanelRecall\RecallSession.cs" Link="Recall\RecallSession.cs" />

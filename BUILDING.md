@@ -17,6 +17,8 @@ Failed compilation exits nonzero. Archives are created only from a new successfu
 
 ## Website publication
 
+`npm run check` includes translation coverage/format checks and mocked CEP launcher regression tests. `README.md` and `README.zh-CN.md`, reviewed screenshots and the verification record are included in the product package. The source-only synthetic desktop harness is described in [docs/VERIFICATION.md](docs/VERIFICATION.md); building it does not start it, and it is not shipped in the product ZIP.
+
 The `Panel Tools` workflow runs on push, pull request and manual dispatch. It checks privacy and source, compiles and retains the ZIP plus SHA256 as an Actions artifact. Publishing is a separate job, restricted to this upstream repository's dev/prod branches. Pull requests never publish; do not change this to `pull_request_target` or run untrusted code with secrets.
 
 When bootstrapping a new repository, open its Actions tab and enable Actions if GitHub shows the repository-level activation banner. A workflow can appear active through the API and allow manual runs before automatic push events are enabled. Verify an actual push run after activation.

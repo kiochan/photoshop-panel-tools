@@ -28,7 +28,7 @@ namespace PanelRecall
             Record = record;
             process = Native.OpenProcess(0x00100000, false, record.Pid);
             if (process == IntPtr.Zero || ProcessIdentity.Started(record.Pid) != record.Started)
-            { Dispose(); throw new InvalidOperationException("源进程身份无法确认，未移动窗口。"); }
+            { Dispose(); throw new InvalidOperationException(UiText.T("源进程身份无法确认，未移动窗口。")); }
             if (record.HostPid != 0 && record.HostStarted > 0 && ProcessIdentity.Started(record.HostPid) == record.HostStarted)
                 host = Native.OpenProcess(0x00100000, false, record.HostPid);
         }
@@ -37,7 +37,7 @@ namespace PanelRecall
             if (r == null || r.Version != 1 || r.Slot < 0 || r.Slot > 4 || r.Window == 0 || r.Cookie == 0 || r.Pid == 0 || r.Started <= 0 ||
                 String.IsNullOrEmpty(r.Class) || String.IsNullOrEmpty(r.Exe) || r.Title == null || r.Width < 1 || r.Height < 1 ||
                 r.Width > 100000 || r.Height > 100000 || Math.Abs((long)r.Left) > 1000000 || Math.Abs((long)r.Top) > 1000000)
-                throw new InvalidOperationException("恢复记录无效，未操作任何窗口。");
+                throw new InvalidOperationException(UiText.T("恢复记录无效，未操作任何窗口。"));
         }
         internal static bool IsDefinitelyGone(ReturnRecord r)
         {
@@ -54,7 +54,7 @@ namespace PanelRecall
             var result = new RecallSession(record);
             try
             {
-                if (!result.IdentityValid()) throw new InvalidOperationException("恢复窗口的标记或进程已改变，未移动窗口。请关闭旧面板后重新绑定。");
+                if (!result.IdentityValid()) throw new InvalidOperationException(UiText.T("恢复窗口的标记或进程已改变，未移动窗口。请关闭旧面板后重新绑定。"));
                 result.marked = true;
                 return result;
             }
@@ -64,13 +64,13 @@ namespace PanelRecall
         {
             var current = Native.Describe(chosen.Handle);
             if (current == null || current.Pid != chosen.Pid || current.Started != chosen.Started || current.Class != chosen.Class)
-                throw new InvalidOperationException("源窗口已改变，请刷新列表后重新绑定。");
+                throw new InvalidOperationException(UiText.T("源窗口已改变，请刷新列表后重新绑定。"));
             RequireMovable(current.Handle);
             Native.Rect rect;
             if (!Native.GetWindowRect(current.Handle, out rect) || rect.Width < 1 || rect.Height < 1)
-                throw new InvalidOperationException("无法读取原面板位置。");
+                throw new InvalidOperationException(UiText.T("无法读取原面板位置。"));
             if (Native.GetProp(current.Handle, Native.Property) != IntPtr.Zero)
-                throw new InvalidOperationException("此窗口已有召回标记，请先恢复上次会话，或关闭该面板后重新打开。");
+                throw new InvalidOperationException(UiText.T("此窗口已有召回标记，请先恢复上次会话，或关闭该面板后重新打开。"));
             long cookie = BitConverter.ToInt64(Guid.NewGuid().ToByteArray(), 0);
             if (cookie == 0) cookie = 1;
             var record = new ReturnRecord { Slot = slot, Window = current.Handle.ToInt64(), Pid = current.Pid, Started = current.Started,
@@ -81,7 +81,7 @@ namespace PanelRecall
             try
             {
                 if (!Native.SetProp(current.Handle, Native.Property, new IntPtr(cookie)))
-                    throw new InvalidOperationException("无法标记面板身份，请确认与 Photoshop 使用相同权限。");
+                    throw new InvalidOperationException(UiText.T("无法标记面板身份，请确认与 Photoshop 使用相同权限。"));
                 result.marked = true;
                 // Durable return point must exist BEFORE the first move.
                 Storage.Write("return.json", record);
@@ -101,10 +101,10 @@ namespace PanelRecall
         }
         private static void RequireMovable(IntPtr window)
         {
-            if (!Native.IsFloating(window)) throw new InvalidOperationException("只能召回浮动顶层面板；请先将停靠面板拖成浮动窗口。");
+            if (!Native.IsFloating(window)) throw new InvalidOperationException(UiText.T("只能召回浮动顶层面板；请先将停靠面板拖成浮动窗口。"));
             if (!Native.IsWindowVisible(window) || Native.IsIconic(window) || Native.IsZoomed(window))
-                throw new InvalidOperationException("请让面板保持可见、未最小化且未最大化。");
-            if (!Native.IsWindowEnabled(window)) throw new InvalidOperationException("面板被对话框阻塞，请先关闭对话框。");
+                throw new InvalidOperationException(UiText.T("请让面板保持可见、未最小化且未最大化。"));
+            if (!Native.IsWindowEnabled(window)) throw new InvalidOperationException(UiText.T("面板被对话框阻塞，请先关闭对话框。"));
         }
         private bool IdentityValid()
         {
@@ -113,11 +113,11 @@ namespace PanelRecall
             return pid == Record.Pid && Native.GetProp(Window, Native.Property) == new IntPtr(Record.Cookie) && Native.ClassName(Window) == Record.Class;
         }
         private void RequireIdentity()
-        { if (!IdentityValid()) throw new InvalidOperationException("面板身份失效，未移动其他窗口；恢复记录已保留。"); }
+        { if (!IdentityValid()) throw new InvalidOperationException(UiText.T("面板身份失效，未移动其他窗口；恢复记录已保留。")); }
         internal void Summon(Native.Point point)
         {
             RequireIdentity(); RequireMovable(Window);
-            if (phase != Phase.Ready && phase != Phase.Present) throw new InvalidOperationException("正在定位或放回，请等待完成；失败后请先放回。");
+            if (phase != Phase.Ready && phase != Phase.Present) throw new InvalidOperationException(UiText.T("正在定位或放回，请等待完成；失败后请先放回。"));
             CanvasClickHook.Disarm(); summonPoint = point;
             // First let the destination monitor apply its own DPI. Do not
             // force an old screen's pixel dimensions onto the plugin.
@@ -150,7 +150,7 @@ namespace PanelRecall
             RequireIdentity();
             uint flags = Native.NoActivate | Native.NoOwnerZOrder | Native.Async | (raise ? 0 : Native.NoZOrder) | (positionOnly ? Native.NoSize : 0);
             if (!Native.SetWindowPos(Window, IntPtr.Zero, bounds.X, bounds.Y, bounds.Width, bounds.Height, flags))
-                throw new InvalidOperationException("系统拒绝移动面板（错误 " + System.Runtime.InteropServices.Marshal.GetLastWin32Error() + "），请尝试放回。");
+                throw new InvalidOperationException(UiText.T("系统拒绝移动面板（错误 ") + System.Runtime.InteropServices.Marshal.GetLastWin32Error() + UiText.T("），请尝试放回。"));
             issued = Now; deadline = After(2500);
         }
         private bool AtPosition(Native.Rect rect)
@@ -167,12 +167,12 @@ namespace PanelRecall
             if (phase == Phase.Present)
             {
                 if (autoReturn && host != IntPtr.Zero && Native.WaitForSingleObject(host, 0) == 258 && CanvasClickHook.TakeCanvasPress(Record.HostPid, Window))
-                { Restore(); return "已识别 PS 画布点击，正在放回原面板…"; }
+                { Restore(); return UiText.T("已识别 PS 画布点击，正在放回原面板…"); }
                 return null;
             }
             Native.Rect rect;
-            if (!Native.GetWindowRect(Window, out rect)) throw new InvalidOperationException("无法确认面板位置，恢复记录已保留。");
-            if (Now > deadline) throw new InvalidOperationException("面板未在期限内到达请求位置，不能宣称成功；请点“放回原位”重试。");
+            if (!Native.GetWindowRect(Window, out rect)) throw new InvalidOperationException(UiText.T("无法确认面板位置，恢复记录已保留。"));
+            if (Now > deadline) throw new InvalidOperationException(UiText.T("面板未在期限内到达请求位置，不能宣称成功；请点“放回原位”重试。"));
             if (!AtPosition(rect) || (Now - issued) * 1000.0 / Stopwatch.Frequency < 150) return null;
             if (phase == Phase.MovingDpi)
             {
@@ -188,8 +188,8 @@ namespace PanelRecall
             {
                 phase = Phase.Present;
                 if (autoReturn) EnableCanvasReturn();
-                return "面板已召回；松键保持。Shift+Alt+" + (Record.Slot + 1) + " 放回。" +
-                    (autoReturn ? "PS 画布点击可触发自动放回（识别不明确时保持）。" : "");
+                return UiText.T("面板已召回；松键保持。Shift+Alt+") + (Record.Slot + 1) + UiText.T(" 放回。") +
+                    (autoReturn ? UiText.T("PS 画布点击可触发自动放回（识别不明确时保持）。") : "");
             }
             else if (phase == Phase.Returning && Math.Abs((long)rect.Width - expected.Width) <= 3 && Math.Abs((long)rect.Height - expected.Height) <= 3)
             {
@@ -197,7 +197,7 @@ namespace PanelRecall
                 Storage.ClearReturnRecord();
                 if (Native.GetProp(Window, Native.Property) == new IntPtr(Record.Cookie)) Native.RemoveProp(Window, Native.Property);
                 marked = false; phase = Phase.Finished; Dispose();
-                return "原面板位置和尺寸已确认恢复。";
+                return UiText.T("原面板位置和尺寸已确认恢复。");
             }
             return null;
         }

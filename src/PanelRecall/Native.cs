@@ -118,7 +118,7 @@ namespace PanelRecall
         public long Started;
         public string Title = "", Class = "", Exe = "";
         public override string ToString()
-        { return (Title.Length == 0 ? "（无标题）" : Title) + " · " + System.IO.Path.GetFileName(Exe) + " · " + Class + " · PID " + Pid; }
+        { return (Title.Length == 0 ? UiText.T("（无标题）") : Title) + " · " + System.IO.Path.GetFileName(Exe) + " · " + Class + " · PID " + Pid; }
         internal Binding Binding()
         { return new Binding { Title = Title, Class = Class, Exe = Exe }; }
         internal bool Matches(Binding binding)

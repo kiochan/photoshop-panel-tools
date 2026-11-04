@@ -6,13 +6,15 @@ namespace PanelMirror;
 
 internal sealed record WindowItem(nint Handle, uint ProcessId, long StartedAt, string ProcessName, string WindowClass, string Title, int PhotoshopMajor)
 {
-    public override string ToString() => $"{Compatibility.Display(ProcessName, PhotoshopMajor)} · {(Title.Length > 0 ? Title : "（无标题）")} · PID {ProcessId} · 0x{Handle:X}";
+    public override string ToString() => $"{Compatibility.Display(ProcessName, PhotoshopMajor)} · {(Title.Length > 0 ? Title : UiText.T("（无标题）"))} · PID {ProcessId} · 0x{Handle:X}";
     public bool Matches(Binding b) => ProcessName.Equals(b.ProcessName, StringComparison.OrdinalIgnoreCase) && WindowClass == b.WindowClass && Title == b.Title &&
         (b.PhotoshopMajor == 0 || PhotoshopMajor == b.PhotoshopMajor);
 }
 
 internal static class Native
 {
+    // Only the source-only documentation harness sets a window-list filter.
+    internal static Func<WindowItem, bool>? WindowFilter { get; set; }
     private static readonly Dictionary<(uint Pid, long Start), int> versions = new();
     [StructLayout(LayoutKind.Sequential)] internal struct POINT { public int X, Y; public POINT(int x, int y) { X = x; Y = y; } }
     [StructLayout(LayoutKind.Sequential)] internal struct RECT { public int Left, Top, Right, Bottom; public RECT(Rectangle r) { Left = r.Left; Top = r.Top; Right = r.Right; Bottom = r.Bottom; } }
@@ -83,7 +85,7 @@ internal static class Native
     internal static List<WindowItem> Windows()
     {
         var list = new List<WindowItem>();
-        EnumWindows((hwnd, _) => { if (IsWindowVisible(hwnd) && Describe(hwnd) is { } item) list.Add(item); return true; }, 0);
+        EnumWindows((hwnd, _) => { if (IsWindowVisible(hwnd) && Describe(hwnd) is { } item && (WindowFilter is null || WindowFilter(item))) list.Add(item); return true; }, 0);
         return list.OrderBy(x => x.ProcessName).ThenBy(x => x.Title).ToList();
     }
 

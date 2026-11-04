@@ -9,7 +9,15 @@
 }
 ---
 
-## New in 0.2.0
+## New in 0.3.0 / 本次更新
+
+- English and Simplified Chinese interfaces, including tray, crop and recovery messages. Save the native language preference and reopen the tool to apply it. The CEP launcher has its own immediate language selector.
+- 中英双语界面及 README；裁剪、托盘、状态与恢复提示均已翻译。原生语言保存后重启生效，CEP 启动器即时切换。
+- Fixed the crop outline window exception found during an isolated desktop demonstration. Synthetic controls accepted a mirrored click and slider drag; real-window summon/return restored the demo source's original bounds. **Photoshop and third-party plugins remain unverified.**
+- 独立桌面演示中验证了裁剪、镜像点击和滑块、真实窗口移动与恢复；仍未启动 Photoshop，不能把演示结果视为插件兼容性验收。
+- The repository READMEs include real English/Chinese configuration, crop and mirror screenshots using project-authored synthetic controls. No Photoshop or private plugin imagery is included.
+
+## Panel recall features
 
 - **Visual crop editor:** drag a rectangle on a live source-window preview, with numeric coordinates still available. Confirm the selection, then save the binding.
 - **Per-slot mirror size memory:** manually resized mirrors keep their logical client size across sessions; new mirrors initially fit the source region to the screen.
@@ -17,7 +25,7 @@
 - **Slot status overview:** see missing or ambiguous windows, shortcut registration problems, mirror pauses and outstanding recovery. Failed operations also request a Windows notification.
 - Shared native source compiles without warnings in .NET 8 and in the optional C# 5 / .NET Framework prototype. Both native builds now treat warnings as errors.
 
-This remains a development trial. The new desktop interactions, mixed-DPI behavior and Photoshop compatibility still require runtime verification.
+This remains a development trial. Selected paths passed isolated synthetic-window desktop checks; mixed-DPI and Photoshop/plugin compatibility still require runtime verification.
 
 ## Choose how each panel appears
 

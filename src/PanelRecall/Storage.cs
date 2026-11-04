@@ -19,9 +19,9 @@ namespace PanelRecall
         internal static Settings Load()
         {
             Settings value = Storage.Read<Settings>("settings.json") ?? new Settings();
-            if (value.Version != 1 || value.Slots == null || value.Slots.Length != 5) throw new InvalidDataException("配置版本或槽位数量无效。");
+            if (value.Version != 1 || value.Slots == null || value.Slots.Length != 5) throw new InvalidDataException(UiText.T("配置版本或槽位数量无效。"));
             foreach (Binding b in value.Slots)
-                if (b == null || b.Title == null || b.Class == null || b.Exe == null) throw new InvalidDataException("配置内容无效。");
+                if (b == null || b.Title == null || b.Class == null || b.Exe == null) throw new InvalidDataException(UiText.T("配置内容无效。"));
             return value;
         }
     }
@@ -37,7 +37,8 @@ namespace PanelRecall
     }
     internal static class Storage
     {
-        internal static string Folder { get { return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "PanelRecall"); } }
+        internal static string DataDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "PanelRecall");
+        internal static string Folder { get { return DataDirectory; } }
         private static string FilePath(string name) { return Path.Combine(Folder, name); }
         // Missing files and serialized null have always meant "no record".
         // Keep that contract visible to the modern compiler without requiring
@@ -51,7 +52,7 @@ namespace PanelRecall
             if (!File.Exists(path)) return null;
             using (var stream = File.OpenRead(path))
             {
-                if (stream.Length > 1024 * 1024) throw new InvalidDataException("配置文件过大。");
+                if (stream.Length > 1024 * 1024) throw new InvalidDataException(UiText.T("配置文件过大。"));
                 var value = new DataContractJsonSerializer(typeof(T)).ReadObject(stream);
                 if (value == null) return null;
                 return (T)value;

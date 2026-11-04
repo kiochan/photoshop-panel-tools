@@ -1,6 +1,6 @@
 {
   "name": "@kiochan/photoshop-panel-tools",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "license": "MIT",
@@ -20,7 +20,8 @@
     "privacy:check": "node scripts/privacy-check.mjs",
     "lint": "biome check --error-on-warnings .",
     "format": "biome check --write .",
-    "check": "npm run lint && node --check cep/panel.js",
+    "check": "npm run lint && node --check cep/panel.js && npm test",
+    "test": "node --test scripts/tests/*.test.mjs",
     "build": "npm run check && powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File scripts/build.ps1",
     "package": "npm run privacy:check && npm run check && powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File scripts/build.ps1 -Package",
     "build:recall": "powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File scripts/build-recall.ps1 -Package",

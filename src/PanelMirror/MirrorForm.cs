@@ -16,7 +16,7 @@ internal sealed class MirrorForm : Form
     private Size sourceSize;
     private bool available, sourceAlive, closing;
     private string? inputError;
-    internal string DisplayStatus { get; private set; } = "正在打开镜像";
+    internal string DisplayStatus { get; private set; } = UiText.T("正在打开镜像");
     internal event Action<Size>? SizeRemembered;
     private Size? rememberedSize;
 
@@ -24,13 +24,13 @@ internal sealed class MirrorForm : Form
     {
         Source = source; this.binding = binding;
         input = new InputForwarder(source, text => { inputError = text; note.Text = "  " + text; report(text); });
-        Text = $"面板镜像 {slot} · {binding.Title}";
+        Text = UiText.F("面板镜像 {0} · {1}", slot, binding.Title);
         AutoScaleMode = AutoScaleMode.Dpi;
         BackColor = Color.FromArgb(28, 28, 30); ForeColor = Color.WhiteSmoke;
         TopMost = true; ShowInTaskbar = false; KeyPreview = true;
         MinimumSize = new Size(280, 180); ClientSize = new Size(660, 460);
-        caption.Text = $"  槽位 {slot} · {returnHint} · 原面板保持原位";
-        note.Text = "  输入转发原型；笔输入按鼠标处理";
+        caption.Text = UiText.F("  槽位 {0} · {1} · 原面板保持原位", slot, returnHint);
+        note.Text = UiText.T("  输入转发原型；笔输入按鼠标处理");
         Controls.Add(caption); Controls.Add(note);
         SetStyle(ControlStyles.StandardDoubleClick, true);
         timer.Tick += (_, _) => RefreshThumbnail();
@@ -90,14 +90,14 @@ internal sealed class MirrorForm : Form
     {
         if (closing || IsDisposed || thumbnail == 0) return;
         sourceAlive = Source.IsAlive();
-        if (!sourceAlive) { Pause("源窗口已退出，请重新绑定", true); return; }
-        if (!Native.IsWindowVisible(Source.Handle) || Native.IsIconic(Source.Handle)) { Pause("源窗口已隐藏／最小化"); return; }
-        if (!Native.IsWindowEnabled(Source.Handle)) { Pause("源窗口暂不可操作，请先处理原窗口中的对话框"); return; }
-        if (!Source.ReadGeometry(binding, out var size, out var area)) { Pause("裁剪区域超出源客户区，请重新配置"); return; }
+        if (!sourceAlive) { Pause(UiText.T("源窗口已退出，请重新绑定"), true); return; }
+        if (!Native.IsWindowVisible(Source.Handle) || Native.IsIconic(Source.Handle)) { Pause(UiText.T("源窗口已隐藏／最小化")); return; }
+        if (!Native.IsWindowEnabled(Source.Handle)) { Pause(UiText.T("源窗口暂不可操作，请先处理原窗口中的对话框")); return; }
+        if (!Source.ReadGeometry(binding, out var size, out var area)) { Pause(UiText.T("裁剪区域超出源客户区，请重新配置")); return; }
         if (sourceRect != area || sourceSize != size) CancelInput();
         sourceRect = area; sourceSize = size;
         var space = Rectangle.FromLTRB(0, caption.Bottom, ClientSize.Width, note.Top);
-        if (space.Width <= 0 || space.Height <= 0) { Pause("镜像窗口太小"); return; }
+        if (space.Width <= 0 || space.Height <= 0) { Pause(UiText.T("镜像窗口太小")); return; }
         double scale = Math.Min((double)space.Width / area.Width, (double)space.Height / area.Height);
         int w = Math.Max(1, (int)(area.Width * scale)), h = Math.Max(1, (int)(area.Height * scale));
         var nextDestination = new Rectangle(space.Left + (space.Width - w) / 2, space.Top + (space.Height - h) / 2, w, h);
@@ -105,10 +105,10 @@ internal sealed class MirrorForm : Form
         destination = nextDestination;
         var props = new Native.ThumbnailProperties { Flags = 0x1F, Source = new Native.RECT(area), Destination = new Native.RECT(destination), Opacity = 255, Visible = true, ClientOnly = true };
         int result = Native.DwmUpdateThumbnailProperties(thumbnail, ref props);
-        if (result < 0) { Pause($"镜像更新失败：0x{result:X8}"); return; }
+        if (result < 0) { Pause(UiText.F("镜像更新失败：0x{0:X8}", result)); return; }
         available = true;
-        DisplayStatus = inputError is null ? "镜像已打开 · 输入接受情况需手动确认" : inputError;
-        note.Text = inputError is null ? "  实时镜像 · 笔按鼠标处理 · 不移动系统指针" : "  " + inputError;
+        DisplayStatus = inputError is null ? UiText.T("镜像已打开 · 输入接受情况需手动确认") : inputError;
+        note.Text = inputError is null ? UiText.T("  实时镜像 · 笔按鼠标处理 · 不移动系统指针") : "  " + inputError;
     }
     private void Pause(string reason, bool destroyed = false)
     {
@@ -116,7 +116,7 @@ internal sealed class MirrorForm : Form
         var props = new Native.ThumbnailProperties { Flags = 8, Visible = false };
         if (thumbnail != 0) Native.DwmUpdateThumbnailProperties(thumbnail, ref props);
         note.Text = "  " + reason;
-        DisplayStatus = "镜像暂停：" + reason;
+        DisplayStatus = UiText.T("镜像暂停：") + reason;
         if (destroyed) { timer.Stop(); UnregisterThumbnail(); }
     }
     private bool CanForward()
@@ -125,7 +125,7 @@ internal sealed class MirrorForm : Form
         if (!Source.Owns(Source.Handle) || !Native.IsWindowVisible(Source.Handle) || Native.IsIconic(Source.Handle) ||
             !Native.IsWindowEnabled(Source.Handle) || !Source.ReadGeometry(binding, out var size, out var area) ||
             size != sourceSize || area != sourceRect)
-        { Pause("源窗口状态或尺寸已改变，等待更新画面"); return false; }
+        { Pause(UiText.T("源窗口状态或尺寸已改变，等待更新画面")); return false; }
         return true;
     }
     private bool Map(Point point, bool outside, out Native.POINT screen)

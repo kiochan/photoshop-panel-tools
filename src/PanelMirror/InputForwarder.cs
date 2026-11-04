@@ -26,16 +26,16 @@ internal sealed class InputForwarder
     private static int Modifiers() => ((Control.ModifierKeys & Keys.Shift) != 0 ? 4 : 0) | ((Control.ModifierKeys & Keys.Control) != 0 ? 8 : 0);
     private bool Post(nint target, uint message, nint wParam, nint lParam)
     {
-        if (!source.Owns(target)) { report("输入目标已失效，操作未转发。"); return false; }
+        if (!source.Owns(target)) { report(UiText.T("输入目标已失效，操作未转发。")); return false; }
         if (Native.PostMessage(target, message, wParam, lParam)) return true;
-        report($"消息投递失败（{Marshal.GetLastWin32Error()}）；原面板可能不接受后台消息。"); return false;
+        report(UiText.F("消息投递失败（{0}）；原面板可能不接受后台消息。", Marshal.GetLastWin32Error())); return false;
     }
     private bool Mouse(nint target, uint message, int flags, Native.POINT screen, bool wheel = false)
     {
         var local = screen;
-        if (!wheel && !Native.ScreenToClient(target, ref local)) { report("无法转换输入坐标。"); return false; }
+        if (!wheel && !Native.ScreenToClient(target, ref local)) { report(UiText.T("无法转换输入坐标。")); return false; }
         if (local.X < short.MinValue || local.X > short.MaxValue || local.Y < short.MinValue || local.Y > short.MaxValue)
-        { report("输入坐标超出 Windows 鼠标消息范围，已暂停本次投递。"); return false; }
+        { report(UiText.T("输入坐标超出 Windows 鼠标消息范围，已暂停本次投递。")); return false; }
         return Post(target, message, (nint)flags, Native.Pack(local.X, local.Y));
     }
     internal void Leave()

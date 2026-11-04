@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.0
+
+- English and Simplified Chinese native interfaces, status/recovery messages and CEP launcher; native language selection persists across restarts.
+- Expanded bilingual READMEs, reviewed real demo screenshots and a verification record separating synthetic controls from Photoshop compatibility.
+- Fix the crop outline's disabled-window display exception and preserve the save reminder after crop confirmation.
+- Embed the translation catalog in the main assembly instead of inferring a satellite culture.
+- Translation and sandboxed launcher regression checks run with `npm run check`.
+- Source-only isolated demo harness exercises the real product forms without Photoshop or normal user configuration.
+
 ## 0.2.0
 
 - Resolve the 24 shared-source nullable warnings while retaining C# 5 compatibility; both native builds now treat warnings as errors.

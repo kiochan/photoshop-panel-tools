@@ -11,6 +11,8 @@ internal static class Program
     [STAThread]
     private static void Main()
     {
+        try { UiText.SetLanguage(Settings.Load().Language); }
+        catch (Exception) { /* ManagerForm reports unreadable settings and prevents overwriting them. */ }
         using var single = new Mutex(true, "Local\\PanelMirror.Configuration", out bool first);
         if (!first)
         {
@@ -21,12 +23,12 @@ internal static class Program
                 { using (signal) { GrantForeground(); signal.Set(); } return; }
                 Thread.Sleep(100);
             }
-            MessageBox.Show("配置程序已运行，但暂时无法唤回；请从系统托盘打开配置。");
+            MessageBox.Show(UiText.T("配置程序已运行，但暂时无法唤回；请从系统托盘打开配置。"));
             return;
         }
         // Both tools share the durable real-window recovery journal.
         using var recallLock = new Mutex(true, "Local\\PanelRecall.Configuration.v1", out bool ownsRecall);
-        if (!ownsRecall) { MessageBox.Show("请先关闭独立 Panel Recall，再使用统一面板工具。"); return; }
+        if (!ownsRecall) { MessageBox.Show(UiText.T("请先关闭独立 Panel Recall，再使用统一面板工具。")); return; }
         Application.SetHighDpiMode(HighDpiMode.PerMonitorV2);
         Application.EnableVisualStyles();
         Application.SetCompatibleTextRenderingDefault(false);

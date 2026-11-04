@@ -3,12 +3,13 @@ import path from "node:path";
 import { root } from "./paths.mjs";
 
 // Shared upload allowlist. Original references, old copies and output are never traversed.
-export const sourceRoots = [".github", "src", "cep", "shared", "scripts", "screenshots"];
+export const sourceRoots = [".github", "src", "cep", "shared", "scripts", "screenshots", "docs"];
 export const sourceDocuments = [
   ".gitignore",
   ".gitattributes",
   "AGENTS.md",
   "README.md",
+  "README.zh-CN.md",
   "BUILDING.md",
   "COMPATIBILITY.md",
   "THIRD_PARTY.md",

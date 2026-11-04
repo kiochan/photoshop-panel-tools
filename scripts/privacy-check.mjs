@@ -29,7 +29,7 @@ const rules = [
   ["credential in URL", /https?:\/\/[^\s/]+:[^\s/]+@/i],
 ];
 for (const file of files) {
-  if (/\.png$/i.test(file)) continue;
+  if (/\.(?:png|jpe?g|webp)$/i.test(file)) continue;
   const text = await readFile(path.join(root, file), "utf8");
   for (const [index, line] of text.split(/\r?\n/).entries()) {
     for (const [name, pattern] of rules)
