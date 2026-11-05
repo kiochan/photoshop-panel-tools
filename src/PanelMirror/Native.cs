@@ -43,6 +43,14 @@ internal static class Native
     [DllImport("user32.dll")] internal static extern bool GetCursorPos(out POINT point);
     [DllImport("user32.dll")] internal static extern nint WindowFromPoint(POINT point);
     [DllImport("user32.dll")] internal static extern nint GetAncestor(nint hwnd, uint flags);
+    [DllImport("user32.dll")] internal static extern nint GetWindow(nint hwnd, uint command);
+    [DllImport("user32.dll")] internal static extern int GetDlgCtrlID(nint hwnd);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] internal static extern nint GetProp(nint hwnd, string name);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)] internal static extern bool SetProp(nint hwnd, string name, nint value);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] internal static extern nint RemoveProp(nint hwnd, string name);
+    internal delegate void WinEventProc(nint hook, uint eventType, nint hwnd, int objectId, int childId, uint thread, uint time);
+    [DllImport("user32.dll", SetLastError = true)] internal static extern nint SetWinEventHook(uint first, uint last, nint module, WinEventProc callback, uint process, uint thread, uint flags);
+    [DllImport("user32.dll")] internal static extern bool UnhookWinEvent(nint hook);
     [DllImport("user32.dll", SetLastError = true)] internal static extern bool RegisterHotKey(nint hwnd, int id, uint modifiers, uint key);
     [DllImport("user32.dll")] internal static extern bool UnregisterHotKey(nint hwnd, int id);
     [DllImport("user32.dll", SetLastError = true)] internal static extern bool PostMessage(nint hwnd, uint message, nint wParam, nint lParam);
@@ -87,6 +95,31 @@ internal static class Native
         var list = new List<WindowItem>();
         EnumWindows((hwnd, _) => { if (IsWindowVisible(hwnd) && Describe(hwnd) is { } item && (WindowFilter is null || WindowFilter(item))) list.Add(item); return true; }, 0);
         return list.OrderBy(x => x.ProcessName).ThenBy(x => x.Title).ToList();
+    }
+
+    // Deliberately conservative: support only known independent PS panel hosts.
+    // The documentation harness is explicitly restricted to its synthetic PID.
+    internal static bool SupportedPanel(WindowItem item)
+    {
+        if (!PanelRecall.Native.IsFloating(item.Handle) || string.IsNullOrWhiteSpace(item.Title)) return false;
+        if (WindowFilter is not null) return WindowFilter(item);
+        if (item.WindowClass is not ("OWL.Floating" or "OWL.Palette" or "OWL.TabbedPalette" or "PLUGPLUG_UI_NATIVE_WINDOW_CLASS_NAME")) return false;
+        return item.ProcessName.Equals("Photoshop", StringComparison.OrdinalIgnoreCase) ||
+            PanelRecall.Native.PhotoshopHost(item.Handle, item.ProcessId) != 0;
+    }
+
+    internal static string ClassName(nint hwnd)
+    { var value = new StringBuilder(256); GetClassName(hwnd, value, value.Capacity); return value.ToString(); }
+    internal static string WindowTitle(nint hwnd)
+    { var value = new StringBuilder(1024); GetWindowText(hwnd, value, value.Capacity); return value.ToString(); }
+
+    internal static bool ClientBounds(nint hwnd, out Rectangle screen)
+    {
+        screen = Rectangle.Empty;
+        var origin = new POINT(0, 0);
+        if (!GetClientRect(hwnd, out var rect) || rect.Right <= 0 || rect.Bottom <= 0 ||
+            rect.Right > 100000 || rect.Bottom > 100000 || !ClientToScreen(hwnd, ref origin)) return false;
+        screen = new Rectangle(origin.X, origin.Y, rect.Right, rect.Bottom); return true;
     }
 
     internal static nint Pack(int x, int y) => (nint)unchecked((int)((ushort)x | ((uint)(ushort)y << 16)));

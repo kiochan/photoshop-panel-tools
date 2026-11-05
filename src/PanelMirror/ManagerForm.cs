@@ -104,7 +104,7 @@ internal sealed class ManagerForm : Form
             box.Leave += (_, _) => BeginInvoke((Action)(() => { if (!IsDisposed && !Disposing) RegisterKeys(); }));
         }
         layout.Controls.Add(new Label { Text = UiText.T("每槽独立保存。移动模式需要先手动浮动，不使用裁剪／输入转发；修改绑定前须先放回。"), AutoSize = true });
-        layout.Controls.Add(new Label { Text = UiText.T("可选择浮动面板；停靠面板请选择 Photoshop 主窗口，再填写客户区裁剪坐标。"), AutoSize = true });
+        layout.Controls.Add(new Label { Text = UiText.T("仅支持独立浮动的 Photoshop 面板；可在该面板客户区手动框选，不支持主窗口或停靠区域。"), AutoSize = true });
         var crops = new FlowLayoutPanel { AutoSize = true };
         string[] names = { "X", "Y", UiText.T("宽"), UiText.T("高") };
         for (int i = 0; i < 4; i++) { crops.Controls.Add(new Label { Text = names[i], AutoSize = true, Padding = new Padding(0, 5, 0, 0) }); crops.Controls.Add(crop[i]); }
@@ -212,7 +212,7 @@ internal sealed class ManagerForm : Form
     private void EditCrop()
     {
         if (mode.SelectedIndex != (int)SummonMode.Mirror) return;
-        if (windows.SelectedItem is not WindowItem selected) { Report(UiText.T("请先选择或拾取源窗口。")); return; }
+        if (windows.SelectedItem is not WindowItem selected || !Native.SupportedPanel(selected)) { Report(UiText.T("请先选择或拾取源窗口。")); return; }
         editingCrop = true; UnregisterKeys();
         string? feedback = null;
         try
@@ -273,6 +273,7 @@ internal sealed class ManagerForm : Form
                 {
                     bool complete = registered.Contains(100 + i * 2) && (!b.SeparateReturnKey || registered.Contains(101 + i * 2));
                     state += keysPaused ? UiText.T(" · 快捷键已暂停") : editingCrop || summonKey.ContainsFocus || returnKey.ContainsFocus ? UiText.T(" · 快捷键录入/裁剪中暂停") : !complete ? UiText.T(" · 快捷键未注册或冲突") : " · " + b.SummonShortcut(i);
+                    if (b.Mode == SummonMode.Mirror && b.Anchor is null) state += UiText.T(" · 仅预览，需重新绑定面板身份");
                     if (b.Mode == SummonMode.Move && recoveryUnreadable) state += UiText.T(" · 恢复记录不可读，禁止新移动");
                 }
                 slotStates[i].Text = $"{i + 1} · {(b.Configured ? b.Title : UiText.T("空槽位"))} · {state}";
@@ -297,8 +298,8 @@ internal sealed class ManagerForm : Form
             if (!Native.GetCursorPos(out var point)) throw new InvalidOperationException(UiText.T("无法读取指针位置。"));
             nint leaf = Native.WindowFromPoint(point), root = Native.GetAncestor(leaf, 2);
             if (leaf == 0 || root == 0 || Native.Describe(root) is not { } item ||
-                !Native.IsWindowVisible(root) || Native.IsIconic(root))
-                throw new InvalidOperationException(UiText.T("未找到可用的源顶层窗口，请避开本工具和镜像窗口。"));
+                !Native.IsWindowVisible(root) || Native.IsIconic(root) || !Native.SupportedPanel(item))
+                throw new InvalidOperationException(UiText.T("未找到支持的独立 Photoshop 面板；请先手动浮动面板，并避开主窗口、文档和镜像窗口。"));
             Rectangle area = Rectangle.Empty;
             if (pickRegion)
             {
@@ -317,7 +318,7 @@ internal sealed class ManagerForm : Form
             if (windows.SelectedItem is null) throw new InvalidOperationException(UiText.T("源窗口在拾取时已变化，请重新拾取。"));
             int[] values = { area.X, area.Y, area.Width, area.Height };
             for (int i = 0; i < 4; i++) crop[i].Value = values[i];
-            Report(pickRegion ? UiText.T("已填入指针命中控件的客户区；可能只是一枚按钮，请检查并调整裁剪后保存。原布局变化后需重新拾取。") : UiText.T("已选中源顶层窗口，裁剪已重置；请检查后绑定保存。"));
+            Report(pickRegion ? UiText.T("已填入指针命中控件的客户区；可能只是一枚按钮，请检查并调整裁剪后保存。选区相对独立面板保存；面板内部重排后请重新框选。") : UiText.T("已选中源顶层窗口，裁剪已重置；请检查后绑定保存。"));
         }
         catch (Exception e) { Report(UiText.T("拾取失败：") + e.Message); }
     }
@@ -328,7 +329,7 @@ internal sealed class ManagerForm : Form
     }
     private void RefreshWindows()
     {
-        windows.DataSource = Native.Windows();
+        windows.DataSource = Native.Windows().Where(Native.SupportedPanel).ToList();
         if (slot.SelectedIndex >= 0) SelectBoundWindow();
     }
     private void SelectBoundWindow()
@@ -352,6 +353,7 @@ internal sealed class ManagerForm : Form
         summonKey.Set(b.SummonShortcut(slot.SelectedIndex)); returnKey.Set(b.ReturnShortcut(slot.SelectedIndex));
         mode.SelectedIndex = (int)b.Mode;
         binding.Text = b.Configured ? UiText.F("当前绑定：{0} · {1} · {2} · {3}", (b.Mode == SummonMode.Move ? UiText.T("移动真实面板") : UiText.T("镜像＋转发")), Compatibility.Display(b.ProcessName, b.PhotoshopMajor), b.Title, b.WindowClass) : UiText.T("当前槽位尚未绑定。");
+        if (b.Mode == SummonMode.Mirror && b.Anchor is { } anchor) binding.Text += " · " + anchor.Title;
         SelectBoundWindow();
     }
     private void SaveBinding()
@@ -366,22 +368,29 @@ internal sealed class ManagerForm : Form
         if (Native.Describe(w.Handle) is not { } current || current.ProcessId != w.ProcessId || current.StartedAt != w.StartedAt)
         { Report(UiText.T("列表中的源窗口已退出或改变，请刷新后重新选择。")); return; }
         w = current;
+        if (!Native.SupportedPanel(w)) { Report(UiText.T("仅支持独立浮动的 Photoshop 面板；主窗口、文档及停靠区域不可用，请手动浮动后重新绑定。")); return; }
         if (mode.SelectedIndex == (int)SummonMode.Mirror && !new SourceWindow(w).ReadGeometry(new Binding {
             X = (int)crop[0].Value, Y = (int)crop[1].Value, Width = (int)crop[2].Value, Height = (int)crop[3].Value }, out _, out _))
         { Report(UiText.T("裁剪区域超出源窗口客户区，请重新预览裁剪后保存。")); return; }
         if (mode.SelectedIndex == (int)SummonMode.Move && !PanelRecall.Native.IsFloating(w.Handle))
-        { Report(UiText.T("移动模式只能绑定真实浮动面板。停靠面板可选择镜像方式，或先手动拖成浮动窗口。")); return; }
-        settings.Slots[i] = new Binding { Mode = (SummonMode)mode.SelectedIndex, ProcessName = w.ProcessName, WindowClass = w.WindowClass, Title = w.Title, PhotoshopMajor = w.PhotoshopMajor,
+        { Report(UiText.T("两种方式均需先手动浮动 Photoshop 面板；不支持停靠面板。")); return; }
+        PanelAnchor? anchor = null;
+        string? trackingReason = null;
+        var selectedCrop = new Rectangle((int)crop[0].Value, (int)crop[1].Value, (int)crop[2].Value, (int)crop[3].Value);
+        if (mode.SelectedIndex == (int)SummonMode.Mirror)
+            anchor = PanelTracker.CaptureAnchor(new SourceWindow(w), selectedCrop, out selectedCrop, out trackingReason);
+        settings.Slots[i] = new Binding { Anchor = anchor, Mode = (SummonMode)mode.SelectedIndex, ProcessName = w.ProcessName, WindowClass = w.WindowClass, Title = w.Title, PhotoshopMajor = w.PhotoshopMajor,
             SeparateReturnKey = separateKeys.Checked, SummonKey = summonKey.Value.Copy(), ReturnKey = returnKey.Value.Copy(),
-            X = (int)crop[0].Value, Y = (int)crop[1].Value,
-            Width = mode.SelectedIndex == (int)SummonMode.Move ? 0 : (int)crop[2].Value,
-            Height = mode.SelectedIndex == (int)SummonMode.Move ? 0 : (int)crop[3].Value, Keyboard = keyboard.Checked,
+            X = selectedCrop.X, Y = selectedCrop.Y,
+            Width = mode.SelectedIndex == (int)SummonMode.Move ? 0 : selectedCrop.Width,
+            Height = mode.SelectedIndex == (int)SummonMode.Move ? 0 : selectedCrop.Height, Keyboard = keyboard.Checked,
             MirrorWidth = previous.MirrorWidth, MirrorHeight = previous.MirrorHeight };
         var conflicts = ShortcutConflicts();
         if (conflicts.Count > 0) { settings.Slots[i] = previous; Report(UiText.T("未保存：") + string.Join("、", conflicts)); return; }
         try { settings.Save(); }
         catch (Exception e) { settings.Slots[i] = previous; Report(UiText.T("保存失败：") + e.Message); return; }
         HideMirror(i); slotErrors[i] = null; sources[i] = new SourceWindow(w); LoadSlot(); RegisterKeys(); UpdateSlotStates();
+        if (trackingReason is not null) Report(trackingReason);
     }
     private void ClearBinding()
     {
@@ -443,6 +452,8 @@ internal sealed class ManagerForm : Form
     {
         var b = settings.Slots[index];
         if (sources[index] is { } live && live.IsAlive()) return live;
+        if (b.Mode == SummonMode.Mirror && b.Anchor is not null)
+            return sources[index] = PanelTracker.ResolveRoot(b) ?? throw new InvalidOperationException(UiText.T("面板跟踪匹配丢失或不唯一，已暂停输入；请重新绑定。"));
         var matches = Native.Windows().Where(w => w.Matches(b)).ToArray();
         if (matches.Length != 1) throw new InvalidOperationException(matches.Length == 0 ? UiText.T("找不到源窗口。标题可能已改变，请重新绑定。") : UiText.T("存在多个同名同类窗口，请从列表中重新绑定具体窗口。"));
         return sources[index] = new SourceWindow(matches[0]);
@@ -453,7 +464,13 @@ internal sealed class ManagerForm : Form
         try
         {
             slotErrors[index] = null;
+            if (settings.Slots[index].Mode == SummonMode.Mirror && mirrors[index] is { IsDisposed: false } tracked)
+            {
+                if (real.Moves(tracked.Source)) throw new InvalidOperationException(UiText.T("此源窗口正在移动模式中使用，请先放回，再打开它的镜像。"));
+                tracked.Summon(); return;
+            }
             SourceWindow source = Resolve(index);
+            if (Native.Describe(source.Handle) is not { } panel || !Native.SupportedPanel(panel)) throw new InvalidOperationException(UiText.T("仅支持独立浮动的 Photoshop 面板；主窗口、文档及停靠区域不可用，请手动浮动后重新绑定。"));
             if (!Native.IsWindowVisible(source.Handle) || Native.IsIconic(source.Handle)) throw new InvalidOperationException(UiText.T("源窗口需要保持显示且未最小化。"));
             if (settings.Slots[index].Mode == SummonMode.Move)
             {
@@ -465,7 +482,6 @@ internal sealed class ManagerForm : Form
                 Report(UiText.T("正在召回真实浮动面板并确认位置；") + ReturnHint(index)); return;
             }
             if (real.Moves(source)) throw new InvalidOperationException(UiText.T("此源窗口正在移动模式中使用，请先放回，再打开它的镜像。"));
-            if (mirrors[index] is { IsDisposed: false } existing && ReferenceEquals(existing.Source, source)) { existing.Summon(); return; }
             HideMirror(index);
             var owner = settings.Slots[index];
             var mirror = new MirrorForm(source, owner, index + 1, ReturnHint(index), Report);

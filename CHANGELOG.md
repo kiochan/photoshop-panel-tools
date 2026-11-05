@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.0
+
+- Restrict both modes to conservatively identified independent floating Photoshop panels; block Photoshop main/document windows and docked regions at selection, binding and summon time.
+- Preserve arbitrary manual client-area crop rectangles without snapping. Follow the same floating window's position; partial crops pause after client-size changes.
+- Add live identity markers, native layout event/snapshot tracking, stable-layout gating and per-message input checks. Docking/recreated targets pause; coordinate-only legacy bindings require explicit rebinding.
+- Cancel uncertain mouse sequences on the original stamped target without sending a coordinate-bearing mouse-up to changed geometry.
+- Document content/tab-change, background-input and unsupported-window limits in English/Chinese UI, READMEs and public release notes. Photoshop runtime compatibility remains unverified.
+
 ## 0.3.0
 
 - English and Simplified Chinese native interfaces, status/recovery messages and CEP launcher; native language selection persists across restarts.

@@ -5,21 +5,22 @@
 "title": "Panel Tools",
 "summary": "Bring a Photoshop plugin panel close to your pointer, with a per-panel choice of a live mirror or the real floating window.",
 "status": "trial",
-"compatibility": ["Windows x64", "Photoshop 2019 (20.x) and later: compatibility target, not runtime certification", "Native pen pressure, tilt and pure Wintab forwarding are not implemented in mirror mode"]
+"compatibility": ["Independent floating Photoshop panels only; docked regions unsupported", "Windows x64", "Photoshop 2019 (20.x) and later: compatibility target, not runtime certification", "Native pen pressure, tilt and pure Wintab forwarding are not implemented in mirror mode"]
 }
 ---
 
-## New in 0.3.0 / 本次更新
+## New in 0.4.0 / 本次更新
 
-- English and Simplified Chinese interfaces, including tray, crop and recovery messages. Save the native language preference and reopen the tool to apply it. The CEP launcher has its own immediate language selector.
-- 中英双语界面及 README；裁剪、托盘、状态与恢复提示均已翻译。原生语言保存后重启生效，CEP 启动器即时切换。
-- Fixed the crop outline window exception found during an isolated desktop demonstration. Synthetic controls accepted a mirrored click and slider drag; real-window summon/return restored the demo source's original bounds. **Photoshop and third-party plugins remain unverified.**
-- 独立桌面演示中验证了裁剪、镜像点击和滑块、真实窗口移动与恢复；仍未启动 Photoshop，不能把演示结果视为插件兼容性验收。
-- The repository READMEs include real English/Chinese configuration, crop and mirror screenshots using project-authored synthetic controls. No Photoshop or private plugin imagery is included.
+- **Independent floating Photoshop panels only, in both modes.** Float a panel manually before binding. Main/document windows and docked regions are blocked. Conservative identification may reject some third-party panels.
+- **两种模式都仅支持独立浮动的 PS 面板。** 主窗口、文档及停靠区域禁止使用，部分无法可靠识别的第三方面板也可能不支持。
+- Drag a manual crop inside the floating panel; its rectangle is preserved exactly. Position changes update the mirror. Partial crops pause after client-size changes; re-crop and bind again. Internal layout/tab changes also require manual review and re-selection.
+- 保留手动框选区域；同一浮动窗口移动时跟随。部分裁剪遇到尺寸变化时暂停；内部重排、切换标签后请重新框选。停靠或窗口重建后需手动浮动并重新绑定。
+- Native identity/layout guards pause uncertain input and reject stale snapshots. Existing coordinate-only bindings need rebinding. These guards do not recognize content redrawn inside the same window and cannot guarantee zero misclicks or plugin acceptance of background messages.
+- No Photoshop or native-helper runtime tests were performed for 0.4.0. Static/build results are recorded in the repository verification document; compilation is not Photoshop validation.
 
 ## Interface screenshots / 界面截图
 
-These are real window captures using an independent synthetic source, not Photoshop/plugin compatibility evidence. 以下为独立合成面板的真实界面截图，不是 Photoshop 或插件兼容性证明。
+These are historical 0.3.0 real window captures using an independent synthetic source, not current UI or Photoshop/plugin compatibility evidence. 以下为独立合成面板的真实界面截图，不是 Photoshop 或插件兼容性证明。
 
 ![Chinese configuration / 中文配置](screenshots/configuration-zh-CN.jpg)
 
@@ -49,7 +50,7 @@ This remains a development trial. Selected paths passed isolated synthetic-windo
 
 1. Download and extract the complete ZIP.
 2. Run `helper/PanelMirror.exe`. The Windows x64 .NET runtime is bundled with this package.
-3. Select a source window, choose its mode and shortcut, then save the binding. A delayed pointer picker can help identify a window or client area.
+3. Manually float a Photoshop panel, select its independent window, choose its mode and shortcut, then save the binding. A delayed pointer picker can help identify a window or client area.
 
 The `CSXS` folder is an optional Photoshop CEP launcher. Its loading behavior depends on your Photoshop/CEP configuration; installing it is not necessary to run the native tool.
 
@@ -57,7 +58,7 @@ The `CSXS` folder is an optional Photoshop CEP launcher. Its loading behavior de
 
 This is a development trial. Static checks, compilation and packaging are covered by CI. **Photoshop runtime behavior has not been verified** on the supported target versions.
 
-Mirrors do not automatically include external menus and dialogs. Hidden or minimized source windows are unsupported. Moving mode does not automatically undock or re-dock panels. If a real window cannot be restored, retain the recovery record and use the recovery action before rebinding it.
+Only conservatively identified independent floating Photoshop panels are supported. Docked regions, the Photoshop main window and document windows are blocked. Manual crops cannot detect content or tab changes; review and re-select them after internal rearrangement. Mirrors do not automatically include external menus and dialogs. Hidden or minimized source windows are unsupported. Moving mode does not automatically undock or re-dock panels. If a real window cannot be restored, retain the recovery record and use the recovery action before rebinding it.
 
 Global shortcuts may conflict with other applications; change them in the configuration window. The tool does not move the system pointer or inject into Photoshop to make mirror input work.
 

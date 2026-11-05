@@ -4,6 +4,29 @@ namespace PanelMirror;
 
 internal enum SummonMode { Mirror, Move }
 
+// A persistent selector, never a persisted HWND. Live HWNDs receive separate
+// session stamps before any input is allowed.
+internal sealed class PanelAnchor
+{
+    public int Version { get; set; } = 1;
+    public string WindowClass { get; set; } = "";
+    public string Title { get; set; } = "";
+    public int ControlId { get; set; }
+    public bool TopLevel { get; set; }
+    public bool WholeClient { get; set; } = true;
+    public int ReferenceWidth { get; set; }
+    public int ReferenceHeight { get; set; }
+    public int X { get; set; }
+    public int Y { get; set; }
+    public int Width { get; set; }
+    public int Height { get; set; }
+
+    internal bool Valid => Version == 1 && WindowClass is { Length: > 0 and <= 256 } &&
+        Title is { Length: > 0 and <= 1024 } && ReferenceWidth is > 0 and <= 100000 &&
+        ReferenceHeight is > 0 and <= 100000 && X >= 0 && Y >= 0 && Width > 0 && Height > 0 &&
+        (long)X + Width <= ReferenceWidth && (long)Y + Height <= ReferenceHeight;
+}
+
 internal sealed class Binding
 {
     public SummonMode Mode { get; set; } = SummonMode.Mirror;
@@ -21,6 +44,7 @@ internal sealed class Binding
     public int Width { get; set; }
     public int Height { get; set; }
     public bool Keyboard { get; set; }
+    public PanelAnchor? Anchor { get; set; }
     // Logical (96 DPI) client size; zero keeps automatic first-use sizing.
     public int MirrorWidth { get; set; }
     public int MirrorHeight { get; set; }
@@ -44,6 +68,8 @@ internal sealed class Settings
             throw new InvalidDataException(UiText.T("配置必须包含五个槽位。"));
         foreach (var slot in settings.Slots)
         {
+            if (slot.Anchor is not null && !slot.Anchor.Valid)
+                throw new InvalidDataException(UiText.T("面板跟踪标识无效，已禁止输入。"));
             if ((slot.SummonKey is not null && !slot.SummonKey.Valid) || (slot.ReturnKey is not null && !slot.ReturnKey.Valid) ||
                 !Enum.IsDefined(slot.Mode) || slot.ProcessName is null || slot.WindowClass is null || slot.Title is null || slot.PhotoshopMajor < 0 ||
                 slot.X < 0 || slot.Y < 0 || slot.Width < 0 || slot.Height < 0 ||

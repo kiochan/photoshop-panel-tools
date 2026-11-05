@@ -14,3 +14,5 @@ The synthetic source is titled **Panel Tools Demo · synthetic source**. Its con
 These screenshots demonstrate the interface and synthetic controls only. They do **not** establish Photoshop or third-party plugin compatibility. See [verification](VERIFICATION.md).
 
 这些是真实窗口截图，展示独立合成控件，不含 Photoshop、第三方插件或个人窗口内容；不能作为 Photoshop 兼容性证明。
+
+These captures show the historical 0.3.0 synthetic demo. Version 0.4.0 restricts sources to independent floating Photoshop panels; these captures do not verify the new native tracking or show all current labels.

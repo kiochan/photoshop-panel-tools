@@ -4,7 +4,11 @@
 
 Updated: **2026-11-04**. This record distinguishes desktop demonstration from Photoshop/plugin compatibility. The previous 0.2.0 dev build and publication completed successfully in [CI](https://github.com/kiochan/photoshop-panel-tools/actions/runs/41529282982).
 
-## Current evidence
+## 0.4.0 — static/build verification / 静态与编译验证
+
+Updated 2026-11-05. Scope is now independent floating Photoshop panels only, with exact manual client-area crops. Main/document windows and docked regions are blocked. Local verification passed: `npm ci`, `npm run privacy:check`, `npm run check` (lint, CEP syntax and 7 translation/launcher/document checks), .NET 8 Windows x64 self-contained compilation and the optional .NET Framework `/langversion:5 /warnaserror+` compilation. Both native builds completed without warnings. Node launcher process creation is mocked; these checks do not exercise the new native tracking at runtime. **No Photoshop, native helper, extension or synthetic-window runtime test was performed for 0.4.0.** Position tracking, resize pauses, identity loss and cancellation still require runtime verification. The desktop evidence below applies only to **0.3.0**.
+
+## Historical 0.3.0 evidence
 
 | Check                         | Result and limits                                                                                                                                                                                                                                |
 | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -26,7 +30,7 @@ The headless native self-check also passed: all **228** embedded English lookups
 ## Still pending / 仍待验证
 
 - Photoshop 2019 (20.x), 2020 (21.x), 2025 (26.x), other target versions and individual third-party panels.
-- Docked Photoshop region selection, changing workspace layouts, modal dialogs and separate plugin menus.
+- Independent floating Photoshop panel identification, manual crops, position changes, size-change pauses, modal dialogs and separate plugin menus. Docked regions are unsupported.
 - Native pressure, tilt, eraser and Wintab forwarding: **not implemented** in mirror mode.
 - Multiple Photoshop instances, mismatched privilege levels, mixed DPI, negative monitor coordinates and unplugged screens.
 - Mirror manual-size persistence across mixed DPI. A desktop resize attempt did not establish a result, so it is not reported as passed.

@@ -14,13 +14,25 @@ Panel Tools is a Windows companion for Photoshop workflows. Five slots let you c
 
 ![English configuration with a synthetic source bound](screenshots/configuration-en.jpg)
 
+## Supported panels and manual cropping
+
+**Only independent floating Photoshop panel windows are supported in both modes.** Float the panel manually before binding. Photoshop's main window, document windows and docked regions are blocked. The conservative window-class/Photoshop-host checks may also reject some third-party floating panels; an unsupported panel is not automatically accepted just because it looks like a panel.
+
+Use **Preview and crop…** to drag any rectangle inside the selected floating panel's client area. The crop is saved exactly as selected, without snapping to another control. A width and height of 0 uses the full client area. Moving the same floating window updates the mirror coordinates; partial crops pause if its client size changes, so crop and bind again. Re-select the crop whenever the panel's internal layout or active tab changes.
+
+Docking, closing/recreating, hiding, minimizing or disabling the source pauses input. Docking/undocking is not supported as a tracking workflow; float and explicitly rebind the panel. Existing coordinate-only bindings require rebinding before input can be enabled. Unsupported old main-window/docked bindings cannot be opened. Layout changes pause input until stable for at least 300 ms; each forwarded message revalidates the native geometry and identity, rejecting snapshots older than 500 ms.
+
+This is native window tracking, not content recognition. A panel may redraw or switch tabs inside an unchanged window without exposing a detectable layout change. Manual cropping does not identify the controls in that region. Posted messages remain asynchronous and may be ignored by plugins; no guarantee of zero misclicks or Photoshop compatibility is made. Cancellation is sent only to the original stamped target without posting a coordinate-bearing mouse-up into uncertain geometry; plugins that ignore cancellation may need manual recovery. No pointer movement, injection or automatic switch to moving mode is used.
+
+The gallery shows the earlier **0.3.0 synthetic demonstration**, not this version's support restrictions or Photoshop verification. See the [verification record](docs/VERIFICATION.md) for current static/build evidence.
+
 ## Choose the right mode
 
 |                               | Mirror + forward input                                                              | Move a real floating panel                                                   |
 | ----------------------------- | ----------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
 | What appears near the pointer | A live DWM image of the source client area                                          | The original window                                                          |
 | Original layout               | Source stays in place                                                               | Original position and size are recorded before moving                        |
-| Docked panel                  | Select the Photoshop main window and crop its client area                           | Float the panel manually first                                               |
+| Docked panel                  | Unsupported; float the panel manually first                                         | Unsupported; float the panel manually first                                  |
 | Interaction                   | Background mouse messages; acceptance depends on the plugin                         | The panel handles its own normal interaction                                 |
 | Pen behavior                  | Mouse-compatible events only; no native pressure, tilt, eraser or Wintab forwarding | Handled by the original panel/driver; Photoshop behavior still needs testing |
 | Menus and dialogs             | Separate windows are not automatically mirrored                                     | Handled by the source application                                            |
@@ -33,11 +45,11 @@ Each slot explicitly chooses its mode. Mirror mode never silently falls back to 
 1. Download the complete Windows x64 ZIP from the [official page](https://kiochan.one/releases/panel-tools). **dev** contains the latest development build; **prod** is a separate channel. Each channel keeps only its latest package.
 2. Extract the whole ZIP into a writable local folder. Keep `helper/`, `CSXS/`, the launcher files and notices together.
 3. Run `helper/PanelMirror.exe`. The .NET 8 runtime is bundled; Photoshop does not need to be open just to configure the tool.
-4. Choose a slot, then a source window. **Pick window in 3 s** reads the window under your pointer without clicking or moving it.
+4. Manually float the Photoshop panel. Choose a slot, then its independent panel window. **Pick window in 3 s** reads the window under your pointer without clicking or moving it.
 5. Select a mode and shortcut. For mirror mode, use **Preview and crop…** to select the region, or enter source-client coordinates. A width and height of 0 means the full client area. **Use selection** fills the fields; **Bind window and save** applies them.
 6. Place your pointer where you want the panel and press **Alt+1** (or the configured shortcut). Press again to close or restore.
 
-Keep mirrored sources visible and not minimized. A control-region picker may identify only a single button; inspect the preview before saving. Re-crop after changing the Photoshop workspace layout.
+Keep the floating source visible and not minimized. A control-region picker may identify only a single button; inspect the preview before saving. Re-crop after internal layout changes; after docking, float and rebind.
 
 ![Real crop editor selecting a synthetic panel](screenshots/crop-en.jpg)
 
@@ -82,7 +94,7 @@ No automatic update installer is implemented. See [PRIVACY.md](PRIVACY.md) for d
 | Shortcut does nothing                       | Bind and save the slot, resume shortcuts from the tray, then check the slot's registration status. Choose a different combination if another application owns it.           |
 | Source not found after restart              | Open the source. Titles may change; refresh and explicitly rebind. Ambiguous matches are not chosen automatically.                                                          |
 | Mirror displays but controls do not respond | Confirm the source is enabled and visible. Try a harmless control. A delivered message does not prove acceptance. You can explicitly choose move mode for a floating panel. |
-| Crop is wrong                               | Reopen the preview after source-size or workspace changes. Coordinates refer to the source client area, not the screen.                                                     |
+| Crop is wrong                               | Reopen the preview after source-size or internal panel changes. Coordinates refer to the source client area, not the screen.                                                |
 | Configuration seems to have closed          | It remains in the tray. Reopen from there or launch the helper again. Use the explicit Exit action to stop it.                                                              |
 | Real panel cannot return                    | Preserve the recovery record; use recovery and read the reported reason. Do not rebind an unresolved moved panel.                                                           |
 | CEP cannot find the helper                  | Extract the complete ZIP again. CEP installation is optional; run `helper/PanelMirror.exe` directly.                                                                        |

@@ -11,7 +11,7 @@
   var selected = /^zh/i.test(navigator.language || navigator.userLanguage || "") ? "zh-CN" : "en";
   var messages = {
     "zh-CN": {
-      description: "在指针旁召回面板；每槽独立选择实时镜像或移动真实浮动面板。",
+      description: "仅支持独立浮动的 PS 面板；可镜像并手动框选，或移动真实面板。不支持停靠区域。",
       compatibility: "兼容目标：PS 2019 及以上。目前尚未实机验证。",
       shortcuts: "默认 Alt + 1～5 召唤／放回，可自定义或分设放回键。",
       ready: "解压完整安装包后，打开工具绑定面板。也可直接运行 helper/PanelMirror.exe。",
@@ -27,7 +27,7 @@
       unknown: "未知"
     },
     en: {
-      description: "Recall panels near your pointer. Choose a live mirror or a real floating panel for each slot.",
+      description: "Independent floating PS panels only. Mirror with manual cropping or move the real panel. Docked regions are unsupported.",
       compatibility: "Target: Photoshop 2019 and later. Host runtime testing is pending.",
       shortcuts: "Alt + 1–5 summons/restores. Customize shortcuts or use separate return keys.",
       ready: "Extract the complete ZIP, then open the tool to bind panels. You can also run helper/PanelMirror.exe directly.",
